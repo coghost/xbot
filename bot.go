@@ -14,12 +14,26 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/input"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/gookit/goutil/dump"
 	"github.com/gookit/goutil/mathutil"
 	"github.com/gookit/goutil/strutil"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cast"
 	"github.com/thoas/go-funk"
 )
+
+func (b *Bot) PanicIfErr(err error) {
+	switch b.PanicBy {
+	case PanicByDump:
+		dump.P(err)
+	case PanicByLogError:
+		log.Error().Err(err).Msg("error of bot")
+	case PanicByLogPanic:
+		log.Panic().Err(err).Msg("error of bot")
+	default:
+		xutil.PanicIfErr(err)
+	}
+}
 
 func (b *Bot) DisableImages(brw *rod.Browser) {
 	router := brw.HijackRequests()
@@ -172,9 +186,8 @@ func (b *Bot) ClosePopover(sel string) (hit int) {
 	return
 }
 
-// ClickPopoverByEsc
-//
-// Deprecated: In many cases, can use CloseIfHasPopovers instead
+// ClickPopoverByEsc close a popover by pressing escape
+// In many cases, can use CloseIfHasPopovers instead
 func (b *Bot) ClickPopoverByEsc(selector string, opts ...BotOptFunc) {
 	if selector == "" {
 		return
@@ -192,12 +205,13 @@ func (b *Bot) ClickPopoverByEsc(selector string, opts ...BotOptFunc) {
 
 func (b *Bot) MustPressEscape(sel string, opts ...BotOptFunc) {
 	err := b.PressEscape(sel, opts...)
-	xutil.PanicIfErr(err)
+	b.PanicIfErr(err)
 }
 
 func (b *Bot) PressEscape(sel string, opts ...BotOptFunc) (err error) {
 	if elem := b.GetElem(sel, opts...); elem != nil {
-		elem.MustKeyActions().Press(input.Escape).MustDo()
+		// elem.MustKeyActions().Press(input.Escape).MustDo()
+		elem.Timeout(time.Second * b.ShortTo).MustKeyActions().Press(input.Escape).MustDo()
 		return nil
 	}
 	return
@@ -263,7 +277,7 @@ func (b *Bot) MustEnsureAnyElem(selectors ...string) string {
 	start := time.Now()
 
 	s, err := b.EnsureAnyElem(selectors...)
-	xutil.PanicIfErr(err)
+	b.PanicIfErr(err)
 
 	cost := mathutil.ElapsedTime(start)
 	log.Trace().Str("selector", s).Str("cost", cost).Msg("Ensure")
@@ -272,7 +286,7 @@ func (b *Bot) MustEnsureAnyElem(selectors ...string) string {
 
 func (b *Bot) MustEnsureUrlHas(s string, opts ...BotOptFunc) {
 	e := b.EnsureUrlHas(s, opts...)
-	xutil.PanicIfErr(e)
+	b.PanicIfErr(e)
 }
 
 func (b *Bot) EnsureUrlHas(s string, opts ...BotOptFunc) (err error) {
@@ -303,7 +317,7 @@ func (b *Bot) MustEval(script string) (res string) {
 
 func (b *Bot) MustFillBar(sel, text string, opts ...BotOptFunc) (txt string) {
 	txt, err := b.FillBar(sel, text, opts...)
-	xutil.PanicIfErr(err)
+	b.PanicIfErr(err)
 	return txt
 }
 
@@ -348,7 +362,7 @@ func (b *Bot) FillAsHuman(elem *rod.Element, text string, args ...int) *rod.Elem
 	arr := xutil.NewStringSlice(text, n, true)
 	for _, str := range arr {
 		e := elem.Input(str)
-		xutil.PanicIfErr(e)
+		b.PanicIfErr(e)
 	}
 
 	to := 0.1
@@ -640,7 +654,7 @@ func (b *Bot) GetWindowInnerHeight() float64 {
 
 func (b *Bot) MustScrollAndClick(selector interface{}, opts ...BotOptFunc) {
 	err := b.ScrollAndClick(selector, opts...)
-	xutil.PanicIfErr(err)
+	b.PanicIfErr(err)
 }
 
 // ScrollAndClick
@@ -662,7 +676,7 @@ func (b *Bot) ScrollAndClick(selector interface{}, opts ...BotOptFunc) error {
 
 func (b *Bot) MustScrollAndClickElem(elem *rod.Element, retryArgs ...uint) {
 	err := b.ScrollAndClickElem(elem, retryArgs...)
-	xutil.PanicIfErr(err)
+	b.PanicIfErr(err)
 }
 
 // ScrollAndClickElem:
@@ -720,7 +734,7 @@ func (b *Bot) ClickElemAndFbWithJs(elem *rod.Element) (err error) {
 
 func (b *Bot) MustClickElem(elem *rod.Element) {
 	e := b.ClickElem(elem)
-	xutil.PanicIfErr(e)
+	b.PanicIfErr(e)
 }
 
 func (b *Bot) ClickElem(elem *rod.Element, highlight ...bool) error {
@@ -737,7 +751,7 @@ func (b *Bot) ClickElem(elem *rod.Element, highlight ...bool) error {
 
 func (b *Bot) MustClickWithScript(elem *rod.Element, args ...int) {
 	e := b.ClickWithScript(elem, args...)
-	xutil.PanicIfErr(e)
+	b.PanicIfErr(e)
 }
 
 // ClickWithScript
@@ -836,7 +850,7 @@ func (b *Bot) ScrollToElem(elem *rod.Element, opts ...BotOptFunc) {
 	steps = int((scrollDistance / dist) * float64(steps))
 	log.Trace().Float64("distance", scrollDistance).Int("steps", steps).Msg("Will scroll with")
 	e := b.Pg.Mouse.Scroll(0.0, scrollDistance, steps)
-	xutil.PanicIfErr(e)
+	b.PanicIfErr(e)
 }
 
 func (b *Bot) GetElemBox(elem interface{}) (box Box, err error) {
@@ -849,7 +863,7 @@ func (b *Bot) GetElemBox(elem interface{}) (box Box, err error) {
 		if e != nil {
 			log.Error().Err(e).Msg("get elem box failed")
 		}
-		xutil.PanicIfErr(e)
+		b.PanicIfErr(e)
 	})
 	return
 }

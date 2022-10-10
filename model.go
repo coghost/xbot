@@ -23,6 +23,8 @@ type Bot struct {
 	// Steps: means take how many steps to scroll to position
 	Steps int
 
+	PanicBy int
+
 	LongTo   time.Duration
 	MediumTo time.Duration
 	ShortTo  time.Duration

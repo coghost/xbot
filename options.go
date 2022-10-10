@@ -32,6 +32,8 @@ type BotOpts struct {
 	// ProxyLine host:port:username:password:<OTHER>
 	ProxyLine string
 
+	PanicBy int
+
 	BotCfg *BotConfig
 }
 
@@ -119,6 +121,12 @@ func InputSubmit(b bool) BotOptFunc {
 func BotTimeout(i time.Duration) BotOptFunc {
 	return func(o *BotOpts) {
 		o.Timeout = i
+	}
+}
+
+func WithPanicBy(i int) BotOptFunc {
+	return func(o *BotOpts) {
+		o.PanicBy = i
 	}
 }
 

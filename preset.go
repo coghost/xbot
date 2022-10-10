@@ -5,8 +5,7 @@ import (
 )
 
 const (
-	SEP    = "@@@"
-	DFT_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"
+	SEP = "@@@"
 )
 
 const (
@@ -14,6 +13,13 @@ const (
 	MediumTo = 20
 	ShortTo  = 5
 	NapTo    = 2
+)
+
+const (
+	PanicByDft = iota
+	PanicByDump
+	PanicByLogPanic
+	PanicByLogError
 )
 
 var ErrorSelNotFound = errors.New("selector not found")
