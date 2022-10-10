@@ -12,21 +12,20 @@ import (
 )
 
 func NewBot(opts ...BotOptFunc) (bot *Bot) {
-	// use default config is non passed in
-	opt := BotOpts{BotCfg: defaultCfg}
-	BindBotOpts(&opt, opts...)
-	ua := xutil.AorB(opt.BotCfg.UserAgent, DFT_UA)
-
-	opt = BotOpts{
+	opt := BotOpts{
 		spawn:     true,
 		Screen:    0,
 		Headless:  false,
 		Highlight: true,
 		Steps:     16,
 		BotCfg:    defaultCfg,
-		UserAgent: ua,
 	}
 	BindBotOpts(&opt, opts...)
+
+	if opt.UserAgent == "" {
+		panic(`UserAgent is required, please use xbot.BotUserAgent(ua) to bind it;
+and you can visit https://www.whatismyip.com/user-agent/ to check your user-agent`)
+	}
 
 	bot = new(Bot)
 	bot.Config = defaultCfg
@@ -38,6 +37,12 @@ func NewBot(opts ...BotOptFunc) (bot *Bot) {
 	bot.Steps = opt.Steps
 
 	return bot
+}
+
+// NewDefaultBot creates a bot with default configs
+func NewDefaultBot(spawn bool) *Bot {
+	ua := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"
+	return NewBot(BotSpawn(spawn), BotUserAgent(ua))
 }
 
 func Spawn(bot *Bot, opts ...BotOptFunc) {
