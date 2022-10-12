@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
-	"xkit/xbot"
 
+	"github.com/coghost/xbot"
 	"github.com/stretchr/testify/suite"
 )
 

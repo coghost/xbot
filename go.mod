@@ -1,4 +1,4 @@
-module xkit/xbot
+module github.com/coghost/xbot
 
 replace (
 	github.com/coghost/xlog => ../xlog
@@ -10,10 +10,10 @@ go 1.19
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
-	github.com/coghost/xpretty v0.0.0-00010101000000-000000000000
-	github.com/coghost/xutil v0.0.0-00010101000000-000000000000
-	github.com/go-rod/rod v0.109.3
-	github.com/gookit/goutil v0.5.12
+	github.com/coghost/xpretty v0.0.0-20221010043412-c2eabe3e48d9
+	github.com/coghost/xutil v0.0.0-20221012053115-2469f568a1a2
+	github.com/go-rod/rod v0.111.0
+	github.com/gookit/goutil v0.5.13
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/zerolog v1.28.0
 	github.com/spf13/cast v1.5.0

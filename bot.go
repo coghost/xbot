@@ -177,7 +177,7 @@ func (b *Bot) ClosePopover(sel string) (hit int) {
 		}
 
 		b.Highlight(elem)
-		e := elem.Click(proto.InputMouseButtonLeft)
+		e := elem.Click(proto.InputMouseButtonLeft, clickButtonTimes)
 		if e != nil {
 			log.Error().Err(e).Msg("close by left click")
 		}
@@ -741,7 +741,7 @@ func (b *Bot) ClickElem(elem *rod.Element, highlight ...bool) error {
 	if len(highlight) == 0 {
 		b.ensureHighlight(elem)
 	}
-	e := elem.Timeout(time.Second * b.ShortTo).Click(proto.InputMouseButtonLeft)
+	e := elem.Timeout(time.Second*b.ShortTo).Click(proto.InputMouseButtonLeft, clickButtonTimes)
 	if e != nil {
 		xutil.PauseToDebug()
 		log.Warn().Interface("selector", b.selector).Err(e).Msg("Err: close by left click")

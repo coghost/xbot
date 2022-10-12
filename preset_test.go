@@ -2,8 +2,8 @@ package xbot_test
 
 import (
 	"testing"
-	"xkit/xbot"
 
+	"github.com/coghost/xbot"
 	"github.com/stretchr/testify/suite"
 )
 

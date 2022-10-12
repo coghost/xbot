@@ -8,6 +8,8 @@ const (
 	SEP = "@@@"
 )
 
+const clickButtonTimes = 1
+
 const (
 	LongTo   = 60
 	MediumTo = 20

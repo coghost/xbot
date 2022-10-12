@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 	"time"
-	"xkit/xbot"
 
 	"github.com/avast/retry-go"
+	"github.com/coghost/xbot"
 	"github.com/coghost/xutil"
 	"github.com/go-rod/rod"
 	"github.com/remeh/sizedwaitgroup"
