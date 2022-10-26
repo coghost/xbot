@@ -491,7 +491,7 @@ func (b *Bot) GetElemUntilInteractable(selector string, opts ...BotOptFunc) (ele
 func (b *Bot) GetElem(selector string, opts ...BotOptFunc) (elem *rod.Element) {
 	if selector == "" {
 		log.Warn().Msg("selector is empty")
-		xutil.DummyErrorLog("selector is empty")
+		xpretty.DummyErrorLog("selector is empty")
 		return
 	}
 	b.selector = selector
