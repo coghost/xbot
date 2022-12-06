@@ -20,6 +20,9 @@ type BotOpts struct {
 	Attr      string
 	Property  string
 
+	//
+	CaseInsensitive bool
+
 	// Scroll options
 	OffsetToTop float64
 
@@ -109,6 +112,12 @@ func ElemProperty(s string) BotOptFunc {
 func ElemOffsetToTop(f float64) BotOptFunc {
 	return func(o *BotOpts) {
 		o.OffsetToTop = f
+	}
+}
+
+func WithCaseInsensitive(b bool) BotOptFunc {
+	return func(o *BotOpts) {
+		o.CaseInsensitive = b
 	}
 }
 

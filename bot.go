@@ -515,7 +515,11 @@ func (b *Bot) GetElem(selector string, opts ...BotOptFunc) (elem *rod.Element) {
 		txt := ss[len(ss)-1]
 		if len(ss) == 3 {
 			// when selector is like div.abc@@@---@@@txt, we use exactly match
-			txt = fmt.Sprintf("/^%s$/", txt)
+			m := "/^%s$/"
+			if opt.CaseInsensitive {
+				m += "i"
+			}
+			txt = fmt.Sprintf(m, txt)
 		}
 		elem, err = b.Pg.Timeout(time.Second*time.Duration(opt.Timeout)).ElementR(ss[0], txt)
 	} else {
