@@ -747,7 +747,6 @@ func (b *Bot) ClickElem(elem *rod.Element, highlight ...bool) error {
 	}
 	e := elem.Timeout(time.Second*b.ShortTo).Click(proto.InputMouseButtonLeft, clickButtonTimes)
 	if e != nil {
-		xutil.PauseToDebug()
 		log.Warn().Interface("selector", b.selector).Err(e).Msg("Err: close by left click")
 	}
 	return e
