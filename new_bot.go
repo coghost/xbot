@@ -72,7 +72,7 @@ func createBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 	return NewBrwAndPage(opts...)
 }
 
-// NewBrwAndPage create and return an Browser and a blank page with window size 1366*768
+// NewBrwAndPage create and return a Browser and a blank page with window size 1366*768
 func NewBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 	opt := BotOpts{
 		Screen:   0,
@@ -80,7 +80,6 @@ func NewBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 		BotCfg:   defaultCfg,
 	}
 	BindBotOpts(&opt, opts...)
-
 	cfg := opt.BotCfg
 
 	var l *launcher.Launcher
@@ -128,7 +127,7 @@ func NewBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 
 // NewUserModeBrwAndPage run with user mode, will use system browser.
 //
-// we can integrate this with NewBrwAndPage, but there're too many if-else
+// we can integrate this with NewBrwAndPage, but there are too many if-else,
 // so we just make a copy of NewBrwAndPage, and extract UserMode related logics
 func NewUserModeBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 	opt := BotOpts{
@@ -141,8 +140,8 @@ func NewUserModeBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page
 
 	u, err := launcher.NewUserMode().Launch()
 	if err != nil {
-		estr := fmt.Sprintf("%s", err)
-		if strings.Contains(estr, "[launcher] Failed to get the debug url: Opening in existing browser session") {
+		s := fmt.Sprintf("%s", err)
+		if strings.Contains(s, "[launcher] Failed to get the debug url: Opening in existing browser session") {
 			fmt.Printf("%[1]s\nlaunch chrome browser failed, please make sure it is closed, and then run again\n%[1]s\n", strings.Repeat("=", 32))
 			log.Fatal().Err(err).Msg("")
 		} else {

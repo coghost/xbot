@@ -121,20 +121,20 @@ func (b *Bot) RetryWhenPanic(fn func(), args ...int) (int, error) {
 	)
 }
 
-// CatchPanic just a wrapper of rod.Try
+// CatchPanic just a wrapper of rod.Try.
 //
 // WARN: this only catch panic, takes no effect of error
 //
-// useful for bot.Mustxxx
+// useful for bot.MustXxx
 func (b *Bot) CatchPanic(fn func()) error {
 	return rod.Try(fn)
 }
 
-// CatchPanicWithFb if fn panic, then fallback to fb
+// CatchPanicWithFb if fn panic, then fallback to fb.
 //
 // WARN: this only catch panic, takes no effect of error
 //
-// useful for bot.Mustxxx
+// useful for bot.MustXxx
 func (b *Bot) CatchPanicWithFb(fn func(), fb func() error) (err error) {
 	err = rod.Try(fn)
 	if errors.Is(err, context.DeadlineExceeded) {
@@ -167,7 +167,6 @@ func (b *Bot) CloseIfHasPopovers() (hit int) {
 	return
 }
 
-// ClosePopover
 func (b *Bot) ClosePopover(sel string) (hit int) {
 	elems, err := b.Pg.Elements(sel)
 	if err != nil {
@@ -234,16 +233,6 @@ func (b *Bot) PressTab(sel string, opts ...BotOptFunc) (err error) {
 		return nil
 	}
 	return
-}
-
-// EnsureAndHighlight
-//
-// Deprecated: for some unknown reasons this sometimes cause program hung up
-func (b *Bot) EnsureAndHighlight(elem *rod.Element) error {
-	err := rod.Try(func() {
-		b.ensureHighlight(elem)
-	})
-	return err
 }
 
 func (b *Bot) ensureHighlight(elem *rod.Element) {
@@ -319,7 +308,7 @@ func (b *Bot) EnsureUrlHas(s string, opts ...BotOptFunc) (err error) {
 //
 // a wrapper with MediumTo to rod.Page.MustEval
 //
-// if you want get error, please use rod.Page.Eval instead
+// if you want to get error, please use rod.Page.Eval instead
 func (b *Bot) MustEval(script string) (res string) {
 	res = b.Pg.Timeout(time.Second * b.MediumTo).MustEval(script).String()
 	return res
@@ -401,7 +390,7 @@ func (b *Bot) MGetElems(selectors []string, opts ...BotOptFunc) (elems []*rod.El
 
 // MGetElemsAllAttr
 //
-// get all elems's attribute
+// get all elems' attribute
 func (b *Bot) MGetElemsAllAttr(selectors []string, opts ...BotOptFunc) []string {
 	var attrs []string
 	for _, elem := range b.MGetElems(selectors, opts...) {
@@ -417,7 +406,7 @@ func (b *Bot) MGetElemsAllAttr(selectors []string, opts ...BotOptFunc) []string 
 // If a multi-selector doesn't find anything, it will immediately return an empty list.
 //
 // and as the test results of `func (s *botSuite) TestGetElems()`
-// the whole GetElems's time cost is less than 0.2 second
+// the whole GetElems' time cost is less than 0.2 second
 //
 // get all elements that match the css selector or []
 // just an alias of bot.Page.Elements
@@ -537,9 +526,9 @@ func (b *Bot) GetElem(selector string, opts ...BotOptFunc) (elem *rod.Element) {
 			}
 			txt = fmt.Sprintf(m, txt)
 		}
-		elem, err = b.Pg.Timeout(time.Second*time.Duration(opt.Timeout)).ElementR(ss[0], txt)
+		elem, err = b.Pg.Timeout(time.Second*opt.Timeout).ElementR(ss[0], txt)
 	} else {
-		elem, err = b.Pg.Timeout(time.Second * time.Duration(opt.Timeout)).Element(selector)
+		elem, err = b.Pg.Timeout(time.Second * opt.Timeout).Element(selector)
 	}
 
 	if err != nil {
@@ -742,7 +731,7 @@ func (b *Bot) MustClickAndSwitchToNewPage(selector interface{}, opts ...BotOptFu
 func (b *Bot) MustClickAndSwitchToNewPageWithScript(selector interface{}, opts ...BotOptFunc) *rod.Page {
 	wait := b.Pg.WaitOpen()
 	elem := b.GetElem(selector.(string), opts...)
-	b.ClickWithScript(elem)
+	_ = b.ClickWithScript(elem)
 	pg, err := wait()
 	b.UpdatePage(pg)
 
@@ -757,7 +746,7 @@ func (b *Bot) MustScrollAndClickElem(elem *rod.Element, retryArgs ...uint) {
 	b.PanicIfErr(err)
 }
 
-// ScrollAndClickElem:
+// ScrollAndClickElem
 //
 // please remember go-rod's element's Timeout will be passed through until cancel called
 func (b *Bot) ScrollAndClickElem(elem *rod.Element, retryArgs ...uint) error {
@@ -859,15 +848,6 @@ func (b *Bot) ClickWithScript(elem *rod.Element, args ...int) error {
 	return ei
 }
 
-// ClickByScript only click the first matched element of given selector
-//
-// Deprecated: @2021-10-28 we only know we clicked, but never know the result
-func (b *Bot) ClickByScript(sel string) error {
-	js := `(elem) => { document.querySelector(elem).click() }`
-	_, e := b.Pg.Timeout(time.Second*b.ShortTo).Eval(js, sel)
-	return e
-}
-
 // Highlight
 //
 // similar with elem.Overlay
@@ -897,10 +877,10 @@ func (b *Bot) _highlight(elem *rod.Element) (cost float64) {
 	ht := xutil.AorB(b.Config.HighlightTimes, 3)
 	for i := 0; i < ht; i++ {
 		script := fmt.Sprintf(`this.setAttribute("style", "%s");`, style)
-		elem.Eval(script)
+		_, _ = elem.Eval(script)
 		xutil.RandSleep(show-v, show+v)
 		script = fmt.Sprintf(`this.setAttribute("style", "%s");`, origStyle)
-		elem.Eval(script)
+		_, _ = elem.Eval(script)
 		xutil.RandSleep(hide-v, hide+v)
 	}
 
@@ -975,7 +955,7 @@ func (b *Bot) GetElemBox(elem interface{}) (box Box, err error) {
 	return
 }
 
-// RecalculateElem: GetElement if elem is string
+// RecalculateElem automatically decide GetElem/GetElement by type of elem
 func (b *Bot) RecalculateElem(elem interface{}, opts ...BotOptFunc) (newElem *rod.Element) {
 	switch elem := elem.(type) {
 	case string:
@@ -1065,9 +1045,15 @@ func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...BotOptFunc) erro
 	return nil
 }
 
-func (b *Bot) UpdatePage(page *rod.Page) {
+func (b *Bot) UpdatePageE(page *rod.Page) error {
 	b.PrevPage, b.Pg = b.Pg, page
-	b.Pg.Activate()
+	_, err := b.Pg.Activate()
+	return err
+}
+
+func (b *Bot) UpdatePage(page *rod.Page) {
+	err := b.UpdatePageE(page)
+	b.PanicIfErr(err)
 }
 
 func (b *Bot) ResetToOriginalPage() {

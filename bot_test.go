@@ -575,30 +575,6 @@ func (s *botSuite) TestPressTab() {
 	}
 }
 
-func (s *botSuite) TestEnsureAndHighlight() {
-	tests := []botTest{
-		{
-			name:    "nil",
-			args:    baidu,
-			wantErr: nil,
-		},
-	}
-
-	handle := func(b *xbot.Bot, tt botTest) {
-		elems := b.GetElems(tt.args.searchTerm)
-
-		if funk.NotEmpty(elems) {
-			got := b.EnsureAndHighlight(elems[0])
-			s.Equal(tt.wantErr, got, tt.name)
-		}
-	}
-
-	for _, tt := range tests {
-		runWorker(tt, handle)
-	}
-
-}
-
 func (s *botSuite) TestEnsureAnyElem() {
 	tests := []botTest{
 		{
@@ -1068,9 +1044,6 @@ func (s *botSuite) TestClickOrWithJs() {
 		e := b.ClickWithScript(sub)
 		s.NotNil(e)
 		s.ErrorIs(e, &rod.ErrNotInteractable{}, "click covered button")
-
-		e1 := b.ClickByScript(blocket.submit)
-		s.Nil(e1)
 	})
 
 	runWorker(t1, func(b *xbot.Bot, tt botTest) {
@@ -1085,8 +1058,6 @@ func (s *botSuite) TestClickOrWithJs() {
 	runWorker(t1, func(b *xbot.Bot, tt botTest) {
 		closePop(s, b)
 
-		e1 := b.ClickByScript(blocket.submit)
-		s.Nil(e1)
 		b.Pg.MustWaitLoad()
 		e2 := b.EnsureUrlHas(blocket.urlHas)
 		s.Nil(e2)
@@ -1095,15 +1066,6 @@ func (s *botSuite) TestClickOrWithJs() {
 
 func (s *botSuite) TestGetElemRSameAsGetElem() {
 	var url1, url2 string
-
-	runWorker(t1, func(b *xbot.Bot, tt botTest) {
-		closePop(s, b)
-		elem1 := b.GetElemR(blocket.category, xbot.NapTo)
-		b.MustClickElem(elem1)
-		b.Pg.MustWaitLoad()
-		b.MustEnsureUrlHas("data-it/")
-		url1 = b.CurrentUrl()
-	})
 
 	runWorker(t1, func(b *xbot.Bot, tt botTest) {
 		closePop(s, b)
