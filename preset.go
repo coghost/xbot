@@ -15,6 +15,9 @@ const (
 	MediumTo = 20
 	ShortTo  = 5
 	NapTo    = 2
+	ZeroTo   = 0
+
+	NearlyNonTo = 0.1
 )
 
 const (

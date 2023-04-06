@@ -1,7 +1,9 @@
 package xbot
 
 import (
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/coghost/xutil"
@@ -22,13 +24,13 @@ func NewBot(opts ...BotOptFunc) (bot *Bot) {
 	}
 	BindBotOpts(&opt, opts...)
 
-	if opt.UserAgent == "" {
+	if !opt.BotCfg.UserMode && opt.UserAgent == "" {
 		panic(`UserAgent is required, please use xbot.BotUserAgent(ua) to bind it;
 and you can visit https://www.whatismyip.com/user-agent/ to check your user-agent`)
 	}
 
 	bot = new(Bot)
-	bot.Config = defaultCfg
+	bot.Config = opt.BotCfg
 	if opt.spawn {
 		bot.Brw, bot.Pg = createBrwAndPage(opts...)
 	}
@@ -43,6 +45,17 @@ and you can visit https://www.whatismyip.com/user-agent/ to check your user-agen
 func NewDefaultBot(spawn bool) *Bot {
 	ua := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"
 	return NewBot(BotSpawn(spawn), BotUserAgent(ua))
+}
+
+func NewUserModeBot(opts ...BotOptFunc) (bot *Bot) {
+	bc := NewDefaultBotCfg()
+	bc.UserMode = true
+
+	opt := BotOpts{Screen: 1, BotCfg: bc}
+	BindBotOpts(&opt, opts...)
+
+	bot = NewBot(BotScreen(opt.Screen), WithBotConfig(opt.BotCfg))
+	return bot
 }
 
 func Spawn(bot *Bot, opts ...BotOptFunc) {
@@ -126,10 +139,17 @@ func NewUserModeBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page
 	BindBotOpts(&opt, opts...)
 	cfg := opt.BotCfg
 
-	// var l *launcher.Launcher
-	u := launcher.NewUserMode().MustLaunch()
+	u, err := launcher.NewUserMode().Launch()
+	if err != nil {
+		estr := fmt.Sprintf("%s", err)
+		if strings.Contains(estr, "[launcher] Failed to get the debug url: Opening in existing browser session") {
+			fmt.Printf("%[1]s\nlaunch chrome browser failed, please make sure it is closed, and then run again\n%[1]s\n", strings.Repeat("=", 32))
+			log.Fatal().Err(err).Msg("")
+		} else {
+			log.Fatal().Err(err).Msg("cannot launch browser")
+		}
+	}
 
-	// u := l.MustLaunch()
 	brw = rod.New().ControlURL(u).MustConnect().NoDefaultDevice()
 
 	slow := xutil.AorB(cfg.SlowMotion, 500)
@@ -138,13 +158,18 @@ func NewUserModeBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page
 
 	page = brw.MustPage("")
 
+	if cfg.Maximize {
+		page.MustWindowMaximize()
+		return
+	}
+
 	w, h := cfg.Width, cfg.Height
 	vw := xutil.AorB(cfg.ViewOffsetWidth, 0)
 	vh := xutil.AorB(cfg.ViewOffsetHeight, 0)
-	page.MustSetWindow(opt.Screen, 0, w, h).MustSetViewport(w-vw, h-vh, 0.0, false)
 
-	if cfg.Maximize {
-		page.MustWindowMaximize()
+	page.MustSetWindow(opt.Screen, 0, w, h)
+	if vw != 0 || vh != 0 {
+		page.MustSetViewport(w-vw, h-vh, 0.0, false)
 	}
 	return
 }

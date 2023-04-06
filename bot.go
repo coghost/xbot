@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -90,6 +92,14 @@ func (b *Bot) SetTimeout() {
 func (b *Bot) GetPage(url string) {
 	b.Pg.Timeout(time.Second * b.LongTo).MustNavigate(url)
 	b.Pg.Timeout(time.Second * b.LongTo).MustWaitLoad()
+}
+
+func (b *Bot) GetPageE(url string) error {
+	if e := b.Pg.Timeout(time.Second * b.LongTo).Navigate(url); e != nil {
+		return e
+	}
+
+	return b.Pg.Timeout(time.Second * b.LongTo).WaitLoad()
 }
 
 func (b *Bot) CurrentUrl() string {
@@ -394,7 +404,7 @@ func (b *Bot) MGetElems(selectors []string, opts ...BotOptFunc) (elems []*rod.El
 // get all elems's attribute
 func (b *Bot) MGetElemsAllAttr(selectors []string, opts ...BotOptFunc) []string {
 	var attrs []string
-	for _, elem := range b.MGetElems(selectors) {
+	for _, elem := range b.MGetElems(selectors, opts...) {
 		at := b.getElemAttr(elem, opts...)
 		attrs = append(attrs, at)
 	}
@@ -413,7 +423,7 @@ func (b *Bot) MGetElemsAllAttr(selectors []string, opts ...BotOptFunc) []string 
 // just an alias of bot.Page.Elements
 //
 // if you want handle the error info, please call b.Pg.Elements directly
-func (b *Bot) GetElems(selector string) (elems []*rod.Element) {
+func (b *Bot) GetElems(selector string, opts ...BotOptFunc) (elems []*rod.Element) {
 	if selector == "" {
 		return
 	}
@@ -421,6 +431,12 @@ func (b *Bot) GetElems(selector string) (elems []*rod.Element) {
 	if strings.Contains(selector, SEP) {
 		log.Error().Str("selector", selector).Msgf("invalid format which contains %q", SEP)
 		return
+	}
+
+	opt := BotOpts{Timeout: 0}
+	BindBotOpts(&opt, opts...)
+	if opt.Timeout != 0 {
+		b.GetElem(selector, BotTimeout(opt.Timeout))
 	}
 
 	elems, err := b.Pg.Elements(selector)
@@ -584,6 +600,23 @@ func (b *Bot) GetElemWithRetry(selector string, retryTimes int, opts ...BotOptFu
 	return
 }
 
+func (b *Bot) GetElementAttrByRetry(selector string, opts ...BotOptFunc) string {
+	opt := BotOpts{
+		retry: 3,
+	}
+	BindBotOpts(&opt, opts...)
+
+	var v string
+	for i := 0; i < opt.retry; i++ {
+		v = b.GetElementAttr(selector, opts...)
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+		xutil.RandSleep(0.5, 0.6)
+	}
+	return v
+}
+
 // GetElementAttr by default return the innerText of given selector
 //
 // but can be customized by ElemAttr("attr_value")
@@ -656,6 +689,11 @@ func (b *Bot) GetWindowInnerHeight() float64 {
 	return float64(h)
 }
 
+func (b *Bot) GetScrollHeight() float64 {
+	h := b.Pg.Timeout(time.Second * b.ShortTo).MustEval(`() => document.body.scrollHeight`).Int()
+	return float64(h)
+}
+
 func (b *Bot) MustScrollAndClick(selector interface{}, opts ...BotOptFunc) {
 	err := b.ScrollAndClick(selector, opts...)
 	b.PanicIfErr(err)
@@ -676,6 +714,42 @@ func (b *Bot) ScrollAndClick(selector interface{}, opts ...BotOptFunc) error {
 		return ErrorSelNotFound
 	}
 	return b.ScrollAndClickElem(elem)
+}
+
+func (b *Bot) ClickAndSwitchToNewPage(selector interface{}, opts ...BotOptFunc) (*rod.Page, error) {
+	opt := BotOpts{
+		Timeout: b.MediumTo,
+	}
+	BindBotOpts(&opt, opts...)
+
+	wait := b.Pg.Timeout(time.Second * opt.Timeout).WaitOpen()
+	if err := b.ScrollAndClick(selector, opts...); err != nil {
+		return nil, err
+	}
+	pg, err := wait()
+	b.UpdatePage(pg)
+	return pg, err
+}
+
+func (b *Bot) MustClickAndSwitchToNewPage(selector interface{}, opts ...BotOptFunc) *rod.Page {
+	pg, err := b.ClickAndSwitchToNewPage(selector, opts...)
+	if err != nil {
+		b.PanicIfErr(err)
+	}
+	return pg
+}
+
+func (b *Bot) MustClickAndSwitchToNewPageWithScript(selector interface{}, opts ...BotOptFunc) *rod.Page {
+	wait := b.Pg.WaitOpen()
+	elem := b.GetElem(selector.(string), opts...)
+	b.ClickWithScript(elem)
+	pg, err := wait()
+	b.UpdatePage(pg)
+
+	if err != nil {
+		b.PanicIfErr(err)
+	}
+	return pg
 }
 
 func (b *Bot) MustScrollAndClickElem(elem *rod.Element, retryArgs ...uint) {
@@ -717,8 +791,10 @@ func (b *Bot) ScrollAndClickOnce(elem *rod.Element) (err error) {
 	}
 
 	if v := elem.MustInteractable(); !v {
-		log.Debug().Bool("clickable", v).Msg("elem un-clickable try close popovers")
-		b.CloseIfHasPopovers()
+		n := b.CloseIfHasPopovers()
+		if n > 0 {
+			log.Debug().Bool("clickable", v).Msg("elem un-clickable try close popovers")
+		}
 	}
 
 	return b.ClickElemAndFbWithJs(elem)
@@ -856,6 +932,34 @@ func (b *Bot) ScrollToElem(elem *rod.Element, opts ...BotOptFunc) {
 	b.PanicIfErr(e)
 }
 
+func (b *Bot) MustScrollToXY(x, y float64) {
+	b.Pg.Mouse.MustScroll(x, y)
+}
+
+func (b *Bot) MustScrollToTop() {
+	h := b.GetScrollHeight()
+	e := b.Pg.Mouse.Scroll(0, -h, 16 /* steps */)
+	b.PanicIfErr(e)
+}
+
+func (b *Bot) MustScrollToBottom(opts ...BotOptFunc) {
+	e := b.ScrollToBottom(opts...)
+	b.PanicIfErr(e)
+}
+
+func (b *Bot) ScrollToBottom(opts ...BotOptFunc) error {
+	opt := BotOpts{Steps: 10, scrollAsHuman: true}
+	BindBotOpts(&opt, opts...)
+	if v := opt.sleepSecBeforeAction; v != 0 {
+		xutil.RandSleep(v, v+0.5)
+	}
+
+	h := b.GetScrollHeight()
+	// e := b.Pg.Mouse.Scroll(0, h, opt.Steps)
+	e := b.ScrollLikeHuman(0, h, opts...)
+	return e
+}
+
 func (b *Bot) GetElemBox(elem interface{}) (box Box, err error) {
 	elem = b.RecalculateElem(elem)
 	rect := "() => JSON.stringify(this.getBoundingClientRect())"
@@ -882,4 +986,97 @@ func (b *Bot) RecalculateElem(elem interface{}, opts ...BotOptFunc) (newElem *ro
 		newElem = elem
 	}
 	return
+}
+
+// ScrollLikeHuman performs a scroll action like human,
+//
+//	scroll down a bit, then sleep a random mills
+func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...BotOptFunc) error {
+	page := b.Pg
+	opt := BotOpts{scrollAsHuman: true, Steps: 4}
+	BindBotOpts(&opt, opts...)
+
+	steps := opt.Steps
+
+	b.ScrollAsHuman = &ScrollAsHuman{
+		enabled:          opt.scrollAsHuman,
+		longSleepChance:  0.1,
+		shortSleepChance: 0.2,
+		scrollUpChance:   0.9,
+	}
+
+	if !b.ScrollAsHuman.enabled || steps == 0 {
+		err := page.Mouse.Scroll(offsetX, offsetY, 1)
+		xutil.RandSleep(0.1, 0.2)
+		return err
+	}
+
+	tooSlowTimeoutSec := 20
+	totalScrolled := 0.0
+	totalNeeded := offsetY
+
+	base := offsetY / float64(steps)
+
+	if offsetY < 0 {
+		totalNeeded = math.Abs(totalNeeded)
+	}
+	startAt := time.Now()
+
+	for totalScrolled < totalNeeded {
+		yNegative := false
+		// handle too slow scroll
+		cost := xutil.ElapsedSeconds(startAt, 2)
+		if cost > float64(tooSlowTimeoutSec) {
+			err := page.Mouse.Scroll(offsetX, totalNeeded-totalScrolled, 1)
+			xutil.RandSleep(0.1, 0.2)
+			return err
+		}
+
+		chance := rand.Float64()
+
+		if chance < b.ScrollAsHuman.longSleepChance {
+			xutil.RandSleep(0.5, 0.6)
+			continue
+		}
+
+		if chance < b.ScrollAsHuman.shortSleepChance {
+			xutil.RandSleep(0.25, 0.3)
+			continue
+		}
+
+		distance := rand.Intn(10) + int(base)
+		if chance > b.ScrollAsHuman.scrollUpChance {
+			yNegative = true
+			distance = rand.Intn(20) + int(base)*2
+		}
+		if v := totalNeeded - totalScrolled; int(v) < distance {
+			distance = int(v)
+		}
+		if yNegative {
+			distance = -distance
+		}
+
+		if e := page.Mouse.Scroll(offsetX, float64(distance), steps); e != nil {
+			return e
+		}
+		totalScrolled += float64(distance)
+	}
+
+	return nil
+}
+
+func (b *Bot) UpdatePage(page *rod.Page) {
+	b.PrevPage, b.Pg = b.Pg, page
+	b.Pg.Activate()
+}
+
+func (b *Bot) ResetToOriginalPage() {
+	if b.PrevPage != nil && b.Pg != nil {
+		b.Pg.MustClose()
+	}
+	b.Pg = b.PrevPage
+}
+
+func (b *Bot) BindIframe(frame *rod.Page) {
+	b.Iframe = frame
 }

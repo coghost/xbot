@@ -38,6 +38,11 @@ type BotOpts struct {
 	PanicBy int
 
 	BotCfg *BotConfig
+
+	sleepSecBeforeAction float64
+	scrollAsHuman        bool
+
+	retry int
 }
 
 type BotOptFunc func(o *BotOpts)
@@ -142,5 +147,23 @@ func WithPanicBy(i int) BotOptFunc {
 func BindBotOpts(opt *BotOpts, opts ...BotOptFunc) {
 	for _, f := range opts {
 		f(opt)
+	}
+}
+
+func WithSleepSec(t float64) BotOptFunc {
+	return func(o *BotOpts) {
+		o.sleepSecBeforeAction = t
+	}
+}
+
+func WithScrollAsHuman(b bool) BotOptFunc {
+	return func(o *BotOpts) {
+		o.scrollAsHuman = b
+	}
+}
+
+func WithRetry(i int) BotOptFunc {
+	return func(o *BotOpts) {
+		o.retry = i
 	}
 }

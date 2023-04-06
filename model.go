@@ -35,10 +35,15 @@ type Bot struct {
 	Brw *rod.Browser
 	Pg  *rod.Page
 
+	Iframe   *rod.Page
+	PrevPage *rod.Page
+
 	// selector
 	selector interface{}
 
 	Config *BotConfig
+
+	ScrollAsHuman *ScrollAsHuman
 }
 
 // BotConfig is used to config bot options, which is usually read from config file
@@ -72,7 +77,7 @@ type BotConfig struct {
 
 	// .rod->show
 	Headless bool `ini:"headless"`
-	// .rod->slow
+	// .rod->slow in milliseconds
 	SlowMotion int `ini:"slow_motion"`
 	// .rod->trace
 	Trace bool `ini:"trace"`
@@ -90,4 +95,11 @@ type BotConfig struct {
 
 	// auto_recaptcha
 	AutoRecaptcha bool `ini:"auto_recaptcha"`
+}
+
+type ScrollAsHuman struct {
+	enabled          bool
+	longSleepChance  float64
+	shortSleepChance float64
+	scrollUpChance   float64
 }
