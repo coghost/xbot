@@ -1,9 +1,8 @@
-package xbot_test
+package xbot
 
 import (
 	"testing"
 
-	"github.com/coghost/xbot"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,11 +21,12 @@ func (s *PresetSuite) TearDownSuite() {
 }
 
 func (s *PresetSuite) Test_01_new() {
-	cfg := xbot.NewDefaultBotCfg()
+	cfg := NewDefaultBotCfg()
 	s.Equal(cfg.AutoRecaptcha, false)
 
-	cf1 := &xbot.BotConfig{
+	cf1 := &BotConfig{
 		Headless:       false,
+		Highlight:      true,
 		HighlightTimes: 1,
 		ProxyRoot:      "/tmp/xbot/proxies",
 		UserDataDir:    "/tmp/xbot/user_data",

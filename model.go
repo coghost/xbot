@@ -18,12 +18,7 @@ type Box struct {
 }
 
 type Bot struct {
-	WithHighlight bool
-
-	// Steps: means take how many steps to scroll to position
-	Steps int
-
-	PanicBy int
+	panicBy BotPanicType
 
 	LongTo   time.Duration
 	MediumTo time.Duration

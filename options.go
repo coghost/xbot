@@ -5,15 +5,8 @@ import (
 )
 
 type BotOpts struct {
-	spawn bool
-
-	Devtools  bool
-	Highlight bool
-	Headless  bool
-	UserAgent string
-
-	Screen int
-	Steps  int
+	spawn   bool
+	panicBy BotPanicType
 
 	// GetElementAttr
 	ElemIndex int
@@ -29,13 +22,11 @@ type BotOpts struct {
 	// Input
 	Submit bool
 
-	// Timeout
+	// Timeout by seconds
 	Timeout time.Duration
 
-	// ProxyLine host:port:username:password:<OTHER>
-	ProxyLine string
-
-	PanicBy int
+	// proxyLine with format `host:port:username:password:<OTHER>`
+	proxyLine string
 
 	BotCfg *BotConfig
 
@@ -62,37 +53,37 @@ func WithBotConfig(cfg *BotConfig) BotOptFunc {
 // BotHeadless is not used, we use file `.rod:show` to control Headless or not
 func BotHeadless(b bool) BotOptFunc {
 	return func(o *BotOpts) {
-		o.Headless = b
+		o.BotCfg.Headless = b
 	}
 }
 
 func BotHighlight(b bool) BotOptFunc {
 	return func(o *BotOpts) {
-		o.Highlight = b
+		o.BotCfg.Highlight = b
 	}
 }
 
 func BotUserAgent(s string) BotOptFunc {
 	return func(o *BotOpts) {
-		o.UserAgent = s
+		o.BotCfg.UserAgent = s
 	}
 }
 
 func BotProxyLine(s string) BotOptFunc {
 	return func(o *BotOpts) {
-		o.ProxyLine = s
+		o.proxyLine = s
 	}
 }
 
 func BotScreen(i int) BotOptFunc {
 	return func(o *BotOpts) {
-		o.Screen = i
+		o.BotCfg.Screen = i
 	}
 }
 
 func BotSteps(i int) BotOptFunc {
 	return func(o *BotOpts) {
-		o.Steps = i
+		o.BotCfg.Steps = i
 	}
 }
 
@@ -138,9 +129,9 @@ func BotTimeout(i time.Duration) BotOptFunc {
 	}
 }
 
-func WithPanicBy(i int) BotOptFunc {
+func WithPanicBy(i BotPanicType) BotOptFunc {
 	return func(o *BotOpts) {
-		o.PanicBy = i
+		o.panicBy = i
 	}
 }
 

@@ -20,11 +20,16 @@ const (
 	NearlyNonTo = 0.1
 )
 
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"
+
+type BotPanicType int
+
 const (
-	PanicByDft = iota
+	PanicByDft BotPanicType = iota
 	PanicByDump
-	PanicByLogPanic
 	PanicByLogError
+	PanicByLogFatal
+	PanicByLogPanic
 )
 
 var ErrorSelNotFound = errors.New("selector not found")
@@ -33,6 +38,7 @@ var defaultCfg = NewDefaultBotCfg()
 func NewDefaultBotCfg() *BotConfig {
 	return &BotConfig{
 		Headless:       false,
+		Highlight:      true,
 		HighlightTimes: 1,
 		ProxyRoot:      "/tmp/xbot/proxies",
 		UserDataDir:    "/tmp/xbot/user_data",

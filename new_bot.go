@@ -15,16 +15,13 @@ import (
 
 func NewBot(opts ...BotOptFunc) (bot *Bot) {
 	opt := BotOpts{
-		spawn:     true,
-		Screen:    0,
-		Headless:  false,
-		Highlight: true,
-		Steps:     16,
-		BotCfg:    defaultCfg,
+		spawn:   true,
+		panicBy: PanicByLogFatal,
+		BotCfg:  defaultCfg,
 	}
 	BindBotOpts(&opt, opts...)
 
-	if !opt.BotCfg.UserMode && opt.UserAgent == "" {
+	if !opt.BotCfg.UserMode && opt.BotCfg.UserAgent == "" {
 		panic(`UserAgent is required, please use xbot.BotUserAgent(ua) to bind it;
 and you can visit https://www.whatismyip.com/user-agent/ to check your user-agent`)
 	}
@@ -35,26 +32,23 @@ and you can visit https://www.whatismyip.com/user-agent/ to check your user-agen
 		bot.Brw, bot.Pg = createBrwAndPage(opts...)
 	}
 	bot.SetTimeout()
-	bot.WithHighlight = opt.Highlight
-	bot.Steps = opt.Steps
 
 	return bot
 }
 
 // NewDefaultBot creates a bot with default configs
 func NewDefaultBot(spawn bool) *Bot {
-	ua := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"
-	return NewBot(BotSpawn(spawn), BotUserAgent(ua))
+	return NewBot(BotSpawn(spawn), BotUserAgent(UA))
 }
 
 func NewUserModeBot(opts ...BotOptFunc) (bot *Bot) {
 	bc := NewDefaultBotCfg()
 	bc.UserMode = true
 
-	opt := BotOpts{Screen: 1, BotCfg: bc}
+	opt := BotOpts{BotCfg: bc}
 	BindBotOpts(&opt, opts...)
 
-	bot = NewBot(BotScreen(opt.Screen), WithBotConfig(opt.BotCfg))
+	bot = NewBot(BotScreen(opt.BotCfg.Screen), WithBotConfig(opt.BotCfg))
 	return bot
 }
 
@@ -75,9 +69,7 @@ func createBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 // NewBrwAndPage create and return a Browser and a blank page with window size 1366*768
 func NewBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 	opt := BotOpts{
-		Screen:   0,
-		Headless: false,
-		BotCfg:   defaultCfg,
+		BotCfg: defaultCfg,
 	}
 	BindBotOpts(&opt, opts...)
 	cfg := opt.BotCfg
@@ -90,9 +82,9 @@ func NewBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 
 	l = setLauncher(l, &opt)
 
-	if opt.ProxyLine != "" {
+	if opt.proxyLine != "" {
 		dir := expandPath(cfg.ProxyRoot)
-		extensionFolder, _, _ := xutil.NewChromeExtension(opt.ProxyLine, dir)
+		extensionFolder, _, _ := xutil.NewChromeExtension(opt.proxyLine, dir)
 		l.Set("load-extension", extensionFolder)
 		log.Debug().Str("extension_folder", extensionFolder).Msg("load proxy extension")
 	}
@@ -116,8 +108,8 @@ func NewBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 	w, h := cfg.Width, cfg.Height
 	vw := xutil.AorB(cfg.ViewOffsetWidth, 0)
 	vh := xutil.AorB(cfg.ViewOffsetHeight, 0)
-	ua := bindUA(opt.UserAgent)
-	page.MustSetUserAgent(ua).MustSetWindow(opt.Screen, 0, w, h).MustSetViewport(w-vw, h-vh, 0.0, false)
+	ua := bindUA(opt.BotCfg.UserAgent)
+	page.MustSetUserAgent(ua).MustSetWindow(opt.BotCfg.Screen, 0, w, h).MustSetViewport(w-vw, h-vh, 0.0, false)
 
 	if cfg.Maximize {
 		page.MustWindowMaximize()
@@ -131,9 +123,7 @@ func NewBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 // so we just make a copy of NewBrwAndPage, and extract UserMode related logics
 func NewUserModeBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 	opt := BotOpts{
-		Screen:   0,
-		Headless: false,
-		BotCfg:   defaultCfg,
+		BotCfg: defaultCfg,
 	}
 	BindBotOpts(&opt, opts...)
 	cfg := opt.BotCfg
@@ -166,7 +156,7 @@ func NewUserModeBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page
 	vw := xutil.AorB(cfg.ViewOffsetWidth, 0)
 	vh := xutil.AorB(cfg.ViewOffsetHeight, 0)
 
-	page.MustSetWindow(opt.Screen, 0, w, h)
+	page.MustSetWindow(opt.BotCfg.Screen, 0, w, h)
 	if vw != 0 || vh != 0 {
 		page.MustSetViewport(w-vw, h-vh, 0.0, false)
 	}
@@ -185,7 +175,7 @@ func setLauncher(l *launcher.Launcher, opt *BotOpts) *launcher.Launcher {
 		Set("disable-infobars").
 		Set("enable-automation").
 		Devtools(opt.BotCfg.Devtools).
-		Headless(opt.Headless)
+		Headless(opt.BotCfg.Headless)
 	return l
 }
 

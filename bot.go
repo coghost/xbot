@@ -25,11 +25,13 @@ import (
 )
 
 func (b *Bot) PanicIfErr(err error) {
-	switch b.PanicBy {
+	switch b.panicBy {
 	case PanicByDump:
 		dump.P(err)
 	case PanicByLogError:
 		log.Error().Err(err).Msg("error of bot")
+	case PanicByLogFatal:
+		log.Fatal().Err(err).Msg("error of bot")
 	case PanicByLogPanic:
 		log.Panic().Err(err).Msg("error of bot")
 	default:
@@ -292,7 +294,7 @@ func (b *Bot) EnsureUrlHas(s string, opts ...BotOptFunc) (err error) {
 	opt := BotOpts{Timeout: b.MediumTo}
 	BindBotOpts(&opt, opts...)
 
-	script := fmt.Sprintf(`decodeURIComponent(window.location.href).includes("%s")`, s)
+	script := fmt.Sprintf(`() => decodeURIComponent(window.location.href).includes("%s")`, s)
 	err = rod.Try(func() {
 		b.Pg.Timeout(time.Second * opt.Timeout).MustWait(script).CancelTimeout()
 	})
@@ -551,22 +553,6 @@ func (b *Bot) GetElem(selector string, opts ...BotOptFunc) (elem *rod.Element) {
 		log.Debug().Float64("cost", cost).Str("selector", selector).Msg("GetElem")
 	}
 
-	return elem
-}
-
-// GetElemR
-//
-// Deprecated: use GetElem instead
-func (b *Bot) GetElemR(selector string, to int) (elem *rod.Element) {
-	ss := strutil.Split(selector, SEP)
-	txt := strings.Join(ss[1:], SEP)
-	err := b.CatchPanic(func() {
-		elem = b.Pg.Timeout(time.Second*time.Duration(to)).MustElementR(ss[0], txt)
-		b.Pg.CancelTimeout()
-	})
-	if err != nil {
-		log.Trace().Str("selector", selector).Msg("Timeout of GetElements")
-	}
 	return elem
 }
 
@@ -857,7 +843,7 @@ func (b *Bot) Highlight(elem *rod.Element) {
 
 func (b *Bot) _highlight(elem *rod.Element) (cost float64) {
 	ts := time.Now()
-	if !b.WithHighlight {
+	if !b.Config.Highlight {
 		return
 	}
 	if elem == nil {
@@ -876,10 +862,10 @@ func (b *Bot) _highlight(elem *rod.Element) (cost float64) {
 	v := 0.05
 	ht := xutil.AorB(b.Config.HighlightTimes, 3)
 	for i := 0; i < ht; i++ {
-		script := fmt.Sprintf(`this.setAttribute("style", "%s");`, style)
+		script := fmt.Sprintf(`() => this.setAttribute("style", "%s");`, style)
 		_, _ = elem.Eval(script)
 		xutil.RandSleep(show-v, show+v)
-		script = fmt.Sprintf(`this.setAttribute("style", "%s");`, origStyle)
+		script = fmt.Sprintf(`() => this.setAttribute("style", "%s");`, origStyle)
 		_, _ = elem.Eval(script)
 		xutil.RandSleep(hide-v, hide+v)
 	}
@@ -905,7 +891,7 @@ func (b *Bot) ScrollToElem(elem *rod.Element, opts ...BotOptFunc) {
 	scrollDistance := box.Top - h*opt.OffsetToTop
 	dist := xutil.IfaceAorB(b.Config.ScrollDistanceBase, 640.0).(float64)
 	// take how many steps to scroll elem to position
-	steps := xutil.AorB(b.Steps, 32)
+	steps := xutil.AorB(b.Config.Steps, 32)
 	steps = int((scrollDistance / dist) * float64(steps))
 	log.Trace().Float64("distance", scrollDistance).Int("steps", steps).Msg("Will scroll with")
 	e := b.Pg.Mouse.Scroll(0.0, scrollDistance, steps)
@@ -928,7 +914,7 @@ func (b *Bot) MustScrollToBottom(opts ...BotOptFunc) {
 }
 
 func (b *Bot) ScrollToBottom(opts ...BotOptFunc) error {
-	opt := BotOpts{Steps: 10, scrollAsHuman: true}
+	opt := BotOpts{scrollAsHuman: true, BotCfg: NewDefaultBotCfg()}
 	BindBotOpts(&opt, opts...)
 	if v := opt.sleepSecBeforeAction; v != 0 {
 		xutil.RandSleep(v, v+0.5)
@@ -973,10 +959,10 @@ func (b *Bot) RecalculateElem(elem interface{}, opts ...BotOptFunc) (newElem *ro
 //	scroll down a bit, then sleep a random mills
 func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...BotOptFunc) error {
 	page := b.Pg
-	opt := BotOpts{scrollAsHuman: true, Steps: 4}
+	opt := BotOpts{scrollAsHuman: true, BotCfg: NewDefaultBotCfg()}
 	BindBotOpts(&opt, opts...)
 
-	steps := opt.Steps
+	steps := opt.BotCfg.Steps
 
 	b.ScrollAsHuman = &ScrollAsHuman{
 		enabled:          opt.scrollAsHuman,

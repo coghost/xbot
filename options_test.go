@@ -1,17 +1,16 @@
-package xbot_test
+package xbot
 
 import (
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/coghost/xbot"
 	"github.com/stretchr/testify/suite"
 )
 
 type BotOptsSuite struct {
 	suite.Suite
-	opt xbot.BotOpts
+	opt BotOpts
 }
 
 func TestBotCfg(t *testing.T) {
@@ -19,63 +18,64 @@ func TestBotCfg(t *testing.T) {
 }
 
 func (s *BotOptsSuite) SetupSuite() {
+	s.opt.BotCfg = &BotConfig{}
 }
 
 func (s *BotOptsSuite) Test_00_Default() {
 	bo := s.opt
-	s.Equal(bo.Screen, 0)
-	s.Equal(bo.Headless, false)
+	s.Equal(bo.BotCfg.Screen, 0)
+	s.Equal(bo.BotCfg.Headless, false)
 	s.Equal(bo.ElemIndex, 0)
 	s.Equal(bo.Attr, "")
 	s.Equal(bo.Property, "")
 	s.Equal(bo.Submit, false)
 }
 
-func (s *BotOptsSuite) setParams(opts ...xbot.BotOptFunc) {
+func (s *BotOptsSuite) setParams(opts ...BotOptFunc) {
 	for _, f := range opts {
 		f(&s.opt)
 	}
 }
 
 func (s *BotOptsSuite) Test_01_BotScreen() {
-	f := xbot.BotScreen(1)
+	f := BotScreen(1)
 
 	tp := reflect.TypeOf(f)
 	s.Equal(tp.String(), "xbot.BotOptFunc")
 	s.Equal(tp.Kind(), reflect.Func)
 
 	s.setParams(f)
-	s.Equal(s.opt.Screen, 1)
+	s.Equal(s.opt.BotCfg.Screen, 1)
 }
 
 func (s *BotOptsSuite) Test_02_BotHeadless() {
-	f := xbot.BotHeadless(true)
+	f := BotHeadless(true)
 	s.setParams(f)
-	s.Equal(s.opt.Headless, true)
+	s.Equal(s.opt.BotCfg.Headless, true)
 }
 
 func (s *BotOptsSuite) Test_03_BotElemIndex() {
-	f := xbot.ElemIndex(1)
+	f := ElemIndex(1)
 	s.setParams(f)
 	s.Equal(s.opt.ElemIndex, 1)
 }
 
 func (s *BotOptsSuite) Test_04_BotElemAttr() {
-	f := xbot.ElemAttr("href")
+	f := ElemAttr("href")
 	s.setParams(f)
 	s.Equal(s.opt.Attr, "href")
 }
 
 func (s *BotOptsSuite) Test_05_BotElemProp() {
 	v := "value"
-	f := xbot.ElemProperty(v)
+	f := ElemProperty(v)
 	s.setParams(f)
 	s.Equal(s.opt.Property, v)
 }
 
 func (s *BotOptsSuite) Test_06_BotInputSubmit() {
 	v := true
-	f := xbot.InputSubmit(v)
+	f := InputSubmit(v)
 	s.setParams(f)
 	s.Equal(s.opt.Submit, v)
 }
@@ -93,9 +93,9 @@ func (s *BotOptsSuite) TestBotHighlight() {
 		{name: "test with false", args: args{b: false}, want: false},
 	}
 	for _, tt := range tests {
-		f := xbot.BotHighlight(tt.args.b)
+		f := BotHighlight(tt.args.b)
 		s.setParams(f)
-		s.Equal(tt.want, s.opt.Highlight, tt.name)
+		s.Equal(tt.want, s.opt.BotCfg.Highlight, tt.name)
 	}
 }
 
@@ -111,9 +111,9 @@ func (s *BotOptsSuite) TestBotSteps() {
 		{name: "default", args: args{i: 0}, want: 0},
 	}
 	for _, tt := range tests {
-		f := xbot.BotSteps(tt.args.i)
+		f := BotSteps(tt.args.i)
 		s.setParams(f)
-		s.Equal(tt.want, s.opt.Steps, tt.name)
+		s.Equal(tt.want, s.opt.BotCfg.Steps, tt.name)
 	}
 }
 
@@ -131,7 +131,7 @@ func (s *BotOptsSuite) TestElemOffsetToTop() {
 		{name: "1024.0", args: args{f: 1024.0}, want: 1024.0},
 	}
 	for _, tt := range tests {
-		fn := xbot.ElemOffsetToTop(tt.args.f)
+		fn := ElemOffsetToTop(tt.args.f)
 		s.setParams(fn)
 		s.Equal(tt.want, s.opt.OffsetToTop, tt.name)
 	}
@@ -150,7 +150,7 @@ func (s *BotOptsSuite) TestBotTimeout() {
 		{name: "1", args: args{i: 1}, want: 1},
 	}
 	for _, tt := range tests {
-		f := xbot.BotTimeout(tt.args.i)
+		f := BotTimeout(tt.args.i)
 		s.setParams(f)
 		s.Equal(tt.want, s.opt.Timeout, tt.want)
 	}
