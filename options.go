@@ -158,3 +158,9 @@ func WithRetry(i int) BotOptFunc {
 		o.retry = i
 	}
 }
+
+func WithRemoteService(s string) BotOptFunc {
+	return func(o *BotOpts) {
+		o.BotCfg.remoteServiceUrl = s
+	}
+}

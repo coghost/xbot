@@ -115,7 +115,7 @@ type botTest struct {
 	to    int
 	index int
 
-	duration time.Duration
+	// duration time.Duration
 
 	withSubmit bool
 

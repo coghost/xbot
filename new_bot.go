@@ -1,12 +1,9 @@
 package xbot
 
 import (
-	"fmt"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/coghost/xutil"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
@@ -60,6 +57,10 @@ func createBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 	opt := BotOpts{BotCfg: defaultCfg}
 	BindBotOpts(&opt, opts...)
 
+	if opt.BotCfg.remoteServiceUrl != "" {
+		return NewRemoteBrwAndPage(opts...)
+	}
+
 	if opt.BotCfg.UserMode {
 		return NewUserModeBrwAndPage(opts...)
 	}
@@ -74,47 +75,11 @@ func NewBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 	BindBotOpts(&opt, opts...)
 	cfg := opt.BotCfg
 
-	var l *launcher.Launcher
-	l = launcher.New()
-	if cfg.BinFile != "" {
-		l = l.Bin(cfg.BinFile)
-	}
+	u := newDefaultLanucher(cfg, opt)
+	brw = customizeBrowser(u, cfg, opt)
+	page = customizePage(brw, cfg, opt)
 
-	l = setLauncher(l, &opt)
-
-	if opt.proxyLine != "" {
-		dir := expandPath(cfg.ProxyRoot)
-		extensionFolder, _, _ := xutil.NewChromeExtension(opt.proxyLine, dir)
-		l.Set("load-extension", extensionFolder)
-		log.Debug().Str("extension_folder", extensionFolder).Msg("load proxy extension")
-	}
-
-	u := l.MustLaunch()
-	brw = rod.New().ControlURL(u).MustConnect()
-
-	if cfg.NoDefaultDevice {
-		brw = brw.NoDefaultDevice()
-	}
-	if cfg.Incognito {
-		brw = brw.MustIncognito()
-	}
-
-	slow := xutil.AorB(cfg.SlowMotion, 500)
-	brw.SlowMotion(time.Millisecond * time.Duration(slow))
-	brw.Trace(cfg.Trace)
-
-	page = brw.MustPage("")
-
-	w, h := cfg.Width, cfg.Height
-	vw := xutil.AorB(cfg.ViewOffsetWidth, 0)
-	vh := xutil.AorB(cfg.ViewOffsetHeight, 0)
-	ua := bindUA(opt.BotCfg.UserAgent)
-	page.MustSetUserAgent(ua).MustSetWindow(opt.BotCfg.Screen, 0, w, h).MustSetViewport(w-vw, h-vh, 0.0, false)
-
-	if cfg.Maximize {
-		page.MustWindowMaximize()
-	}
-	return
+	return brw, page
 }
 
 // NewUserModeBrwAndPage run with user mode, will use system browser.
@@ -128,39 +93,30 @@ func NewUserModeBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page
 	BindBotOpts(&opt, opts...)
 	cfg := opt.BotCfg
 
-	u, err := launcher.NewUserMode().Launch()
-	if err != nil {
-		s := fmt.Sprintf("%s", err)
-		if strings.Contains(s, "[launcher] Failed to get the debug url: Opening in existing browser session") {
-			fmt.Printf("%[1]s\nlaunch chrome browser failed, please make sure it is closed, and then run again\n%[1]s\n", strings.Repeat("=", 32))
-			log.Fatal().Err(err).Msg("")
-		} else {
-			log.Fatal().Err(err).Msg("cannot launch browser")
-		}
+	u := newUserModeLauncher(opt)
+	brw = customizeBrowser(u, cfg, opt)
+	page = customizePage(brw, cfg, opt)
+
+	return brw, page
+}
+
+func NewRemoteBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
+	opt := BotOpts{
+		BotCfg: defaultCfg,
 	}
+	BindBotOpts(&opt, opts...)
+	cfg := opt.BotCfg
 
-	brw = rod.New().ControlURL(u).MustConnect().NoDefaultDevice()
-
-	slow := xutil.AorB(cfg.SlowMotion, 500)
-	brw.SlowMotion(time.Millisecond * time.Duration(slow))
-	brw.Trace(cfg.Trace)
-
-	page = brw.MustPage("")
-
-	if cfg.Maximize {
-		page.MustWindowMaximize()
-		return
+	if strings.HasPrefix(cfg.remoteServiceUrl, "ws://") {
+		l := newRemoteLauncher(opt)
+		brw = rod.New().Client(l.MustClient()).MustConnect()
+	} else {
+		u := launcher.MustResolveURL(cfg.remoteServiceUrl)
+		brw = rod.New().ControlURL(u).MustConnect()
 	}
+	page = customizePage(brw, cfg, opt)
 
-	w, h := cfg.Width, cfg.Height
-	vw := xutil.AorB(cfg.ViewOffsetWidth, 0)
-	vh := xutil.AorB(cfg.ViewOffsetHeight, 0)
-
-	page.MustSetWindow(opt.BotCfg.Screen, 0, w, h)
-	if vw != 0 || vh != 0 {
-		page.MustSetViewport(w-vw, h-vh, 0.0, false)
-	}
-	return
+	return brw, page
 }
 
 func setLauncher(l *launcher.Launcher, opt *BotOpts) *launcher.Launcher {

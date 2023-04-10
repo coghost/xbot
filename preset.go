@@ -50,6 +50,9 @@ func NewDefaultBotCfg() *BotConfig {
 		Width:       1366,
 		Height:      728,
 
+		NoDefaultDevice: true,
+		Incognito:       false,
+
 		PerInputLength: 7,
 	}
 }

@@ -90,6 +90,12 @@ type BotConfig struct {
 
 	// auto_recaptcha
 	AutoRecaptcha bool `ini:"auto_recaptcha"`
+
+	// remoteServiceUrl
+	// two types:
+	//  - ws://ip:port this will launch remote browser
+	//  - ip:port this only connect to remote browser
+	remoteServiceUrl string `ini:"remote_service_url"`
 }
 
 type ScrollAsHuman struct {
