@@ -93,7 +93,7 @@ func NewUserModeBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page
 	BindBotOpts(&opt, opts...)
 	cfg := opt.BotCfg
 
-	u := newUserModeLauncher(opt)
+	u := newUserModeLauncher(cfg, opt)
 	brw = customizeBrowser(u, cfg, opt)
 	page = customizePage(brw, cfg, opt)
 

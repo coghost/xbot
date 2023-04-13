@@ -25,7 +25,7 @@ func newDefaultLanucher(cfg *BotConfig, opt BotOpts) string {
 		dir := expandPath(cfg.ProxyRoot)
 		extensionFolder, _, _ := xutil.NewChromeExtension(opt.proxyLine, dir)
 		l.Set("load-extension", extensionFolder)
-		log.Debug().Str("extension_folder", extensionFolder).Msg("load proxy extension")
+		log.Info().Str("extension_folder", extensionFolder).Msg("load proxy extension")
 	}
 
 	u, err := l.Launch()
@@ -35,8 +35,18 @@ func newDefaultLanucher(cfg *BotConfig, opt BotOpts) string {
 	return u
 }
 
-func newUserModeLauncher(opt BotOpts) string {
-	u, err := launcher.NewUserMode().Launch()
+func newUserModeLauncher(cfg *BotConfig, opt BotOpts) string {
+	l := launcher.NewUserMode()
+
+	// WARN: @Apr.13 proxy extention is not worked
+	if opt.proxyLine != "" {
+		dir := expandPath(cfg.ProxyRoot)
+		extensionFolder, _, _ := xutil.NewChromeExtension(opt.proxyLine, dir)
+		l.Set("load-extension", extensionFolder)
+		log.Debug().Str("extension_folder", extensionFolder).Msg("load proxy extension")
+	}
+
+	u, err := l.Launch()
 	if err != nil {
 		s := fmt.Sprintf("%s", err)
 		if strings.Contains(s, "[launcher] Failed to get the debug url: Opening in existing browser session") {
