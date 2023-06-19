@@ -1,19 +1,10 @@
 package xbot
 
-import (
-	"time"
-)
+import "github.com/go-rod/rod"
 
 type BotOpts struct {
-	spawn bool
-
-	Devtools  bool
-	Highlight bool
-	Headless  bool
-	UserAgent string
-
-	Screen int
-	Steps  int
+	spawn   bool
+	panicBy BotPanicType
 
 	// GetElementAttr
 	ElemIndex int
@@ -29,13 +20,11 @@ type BotOpts struct {
 	// Input
 	Submit bool
 
-	// Timeout
-	Timeout time.Duration
+	// Timeout by seconds
+	Timeout int
 
-	// ProxyLine host:port:username:password:<OTHER>
-	ProxyLine string
-
-	PanicBy int
+	// proxyLine with format `host:port:username:password:<OTHER>`
+	// proxyLine string
 
 	BotCfg *BotConfig
 
@@ -43,6 +32,8 @@ type BotOpts struct {
 	scrollAsHuman        bool
 
 	retry int
+
+	root *rod.Element
 }
 
 type BotOptFunc func(o *BotOpts)
@@ -59,40 +50,63 @@ func WithBotConfig(cfg *BotConfig) BotOptFunc {
 	}
 }
 
+func WithDefaultBotConfig() BotOptFunc {
+	return func(o *BotOpts) {
+		o.BotCfg = defaultCfg
+	}
+}
+
 // BotHeadless is not used, we use file `.rod:show` to control Headless or not
 func BotHeadless(b bool) BotOptFunc {
 	return func(o *BotOpts) {
-		o.Headless = b
+		o.BotCfg.Headless = b
 	}
 }
 
 func BotHighlight(b bool) BotOptFunc {
 	return func(o *BotOpts) {
-		o.Highlight = b
+		o.BotCfg.Highlight = b
 	}
 }
 
 func BotUserAgent(s string) BotOptFunc {
 	return func(o *BotOpts) {
-		o.UserAgent = s
+		o.BotCfg.UserAgent = s
 	}
 }
 
+// BotProxyLine is with format `host:port:username:password:<OTHER>`
 func BotProxyLine(s string) BotOptFunc {
 	return func(o *BotOpts) {
-		o.ProxyLine = s
+		o.BotCfg.ProxyLine = s
 	}
 }
 
+// BotProxyServer is with format `host:port`
+//
+// proxy server has higher priority than proxy-line,
+// so if both proxy-server and proxy-line provided, will use proxy-server
+//
+//	e.g. BotProxyServer("127.0.0.1:12345")
+func BotProxyServer(s string) BotOptFunc {
+	return func(o *BotOpts) {
+		o.BotCfg.ProxyServer = s
+	}
+}
+
+// BotScreen is the x position of screen,
+// you can set it to value less than 0 if you have multiple screens
+//
+//	e.g. you have a second display, with resolution 2560*1440, then you can set BotScreen(-2560)
 func BotScreen(i int) BotOptFunc {
 	return func(o *BotOpts) {
-		o.Screen = i
+		o.BotCfg.Screen = i
 	}
 }
 
 func BotSteps(i int) BotOptFunc {
 	return func(o *BotOpts) {
-		o.Steps = i
+		o.BotCfg.Steps = i
 	}
 }
 
@@ -132,15 +146,15 @@ func InputSubmit(b bool) BotOptFunc {
 	}
 }
 
-func BotTimeout(i time.Duration) BotOptFunc {
+func BotTimeout(i int) BotOptFunc {
 	return func(o *BotOpts) {
 		o.Timeout = i
 	}
 }
 
-func WithPanicBy(i int) BotOptFunc {
+func WithPanicBy(i BotPanicType) BotOptFunc {
 	return func(o *BotOpts) {
-		o.PanicBy = i
+		o.panicBy = i
 	}
 }
 
@@ -165,5 +179,37 @@ func WithScrollAsHuman(b bool) BotOptFunc {
 func WithRetry(i int) BotOptFunc {
 	return func(o *BotOpts) {
 		o.retry = i
+	}
+}
+
+func WithRemoteService(s string) BotOptFunc {
+	return func(o *BotOpts) {
+		o.BotCfg.remoteServiceUrl = s
+	}
+}
+
+func WithStealth(b bool) BotOptFunc {
+	return func(o *BotOpts) {
+		o.BotCfg.WithStealth = b
+	}
+}
+
+// WithLeakless works only with user_mode
+func WithLeakless(b bool) BotOptFunc {
+	return func(o *BotOpts) {
+		o.BotCfg.Leakless = b
+	}
+}
+
+// WithLeakless works only with user_mode
+func DisableCookies(b bool) BotOptFunc {
+	return func(o *BotOpts) {
+		o.BotCfg.ClearCookies = b
+	}
+}
+
+func WithRoot(root *rod.Element) BotOptFunc {
+	return func(o *BotOpts) {
+		o.root = root
 	}
 }

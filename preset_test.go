@@ -1,9 +1,10 @@
-package xbot_test
+package xbot
 
 import (
 	"testing"
+	"time"
 
-	"github.com/coghost/xbot"
+	"github.com/gookit/goutil/dump"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,11 +23,12 @@ func (s *PresetSuite) TearDownSuite() {
 }
 
 func (s *PresetSuite) Test_01_new() {
-	cfg := xbot.NewDefaultBotCfg()
+	cfg := NewDefaultBotCfg()
 	s.Equal(cfg.AutoRecaptcha, false)
 
-	cf1 := &xbot.BotConfig{
+	cf1 := &BotConfig{
 		Headless:       false,
+		Highlight:      true,
 		HighlightTimes: 1,
 		ProxyRoot:      "/tmp/xbot/proxies",
 		UserDataDir:    "/tmp/xbot/user_data",
@@ -42,4 +44,14 @@ func (s *PresetSuite) Test_01_new() {
 	}
 
 	s.Equal(cf1, cfg)
+}
+
+func (s *PresetSuite) Test_02_new() {
+	type bb struct {
+		longToSec time.Duration
+	}
+	b := &bb{
+		longToSec: LongToSec * time.Second,
+	}
+	dump.P(b.longToSec)
 }
