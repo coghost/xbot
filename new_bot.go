@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coghost/xutil"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
@@ -50,7 +51,9 @@ func NewUserModeBot(opts ...BotOptFunc) (bot *Bot) {
 }
 
 func Spawn(bot *Bot, opts ...BotOptFunc) {
-	bot.Brw, bot.Pg = createBrwAndPage(opts...)
+	if bot.Brw == nil {
+		bot.Brw, bot.Pg = createBrwAndPage(opts...)
+	}
 }
 
 func createBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
@@ -95,6 +98,10 @@ func NewUserModeBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page
 
 	u := newUserModeLauncher(cfg, opt)
 	brw = customizeBrowser(u, cfg, opt)
+	if cfg.ClearCookies {
+		log.Info().Msg("clear cookies in user-mode")
+		brw.MustSetCookies()
+	}
 	page = customizePage(brw, cfg, opt)
 
 	return brw, page
@@ -136,7 +143,7 @@ func setLauncher(l *launcher.Launcher, opt *BotOpts) *launcher.Launcher {
 }
 
 func bindUA(uaStr string) *proto.NetworkSetUserAgentOverride {
-	log.Debug().Str("ua", uaStr).Msg("bind user-agent")
+	log.Trace().Str("ua", uaStr).Msg("bind user-agent")
 	ua := proto.NetworkSetUserAgentOverride{}
 	ua.UserAgent = uaStr
 	ua.AcceptLanguage = "en"
@@ -163,4 +170,24 @@ func expandPath(pathStr string) string {
 	}
 
 	return homeDir + pathStr[1:]
+}
+
+// ForceQuitBrowser will try to close browser by kill the process name
+func ForceQuitBrowser(browserName string, opts ...BotOptFunc) error {
+	opt := BotOpts{retry: 5}
+	BindBotOpts(&opt, opts...)
+
+	for i := 0; ; i++ {
+		// pkill -a -i "Google Chrome"
+		err := xutil.KillProcess(browserName)
+		if err == nil {
+			break
+		}
+		log.Error().Str("browser", browserName).Int("tried", i).Err(err).Msg("failed of close")
+		if i >= opt.retry {
+			return err
+		}
+		xutil.RandSleep(2.0, 2.5)
+	}
+	return nil
 }

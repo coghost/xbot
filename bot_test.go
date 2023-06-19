@@ -844,7 +844,7 @@ func (s *botSuite) Test_1102_GetElem_TestData() {
 	var handle = func(b *xbot.Bot, tt botTest) {
 		to := tt.to
 		ts := time.Now()
-		got := b.GetElem(tt.args.sel, xbot.ElemIndex(tt.index), xbot.BotTimeout(time.Duration(to)))
+		got := b.GetElem(tt.args.sel, xbot.ElemIndex(tt.index), xbot.BotTimeout(to))
 
 		cost := xutil.ElapsedSeconds(ts, 2)
 

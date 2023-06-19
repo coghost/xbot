@@ -85,23 +85,23 @@ func (b *Bot) HandleXHR(brw *rod.Browser, res string, cb func(a, b string)) {
 }
 
 func (b *Bot) SetTimeout() {
-	b.LongTo = LongTo
-	b.MediumTo = MediumTo
-	b.ShortTo = ShortTo
-	b.NapTo = NapTo
+	b.longToSec = LongToSec * time.Second
+	b.mediumToSec = MediumToSec * time.Second
+	b.shortToSec = ShortToSec * time.Second
+	b.NapToSec = NapToSec * time.Second
 }
 
 func (b *Bot) GetPage(url string) {
-	b.Pg.Timeout(time.Second * b.LongTo).MustNavigate(url)
-	b.Pg.Timeout(time.Second * b.LongTo).MustWaitLoad()
+	b.Pg.Timeout(b.longToSec).MustNavigate(url)
+	b.Pg.Timeout(b.longToSec).MustWaitLoad()
 }
 
 func (b *Bot) GetPageE(url string) error {
-	if e := b.Pg.Timeout(time.Second * b.LongTo).Navigate(url); e != nil {
+	if e := b.Pg.Timeout(b.longToSec).Navigate(url); e != nil {
 		return e
 	}
 
-	return b.Pg.Timeout(time.Second * b.LongTo).WaitLoad()
+	return b.Pg.Timeout(b.longToSec).WaitLoad()
 }
 
 func (b *Bot) CurrentUrl() string {
@@ -210,7 +210,7 @@ func (b *Bot) ClickPopoverByEsc(selector string, opts ...BotOptFunc) {
 	if elem != nil {
 		log.Debug().Str("popover", selector).Msg("Found Popover")
 		b.Highlight(elem)
-		elem.Timeout(time.Second * b.NapTo).MustKeyActions().Press(input.Escape).MustDo()
+		elem.Timeout(b.NapToSec).MustKeyActions().Press(input.Escape).MustDo()
 	}
 }
 
@@ -222,7 +222,7 @@ func (b *Bot) MustPressEscape(sel string, opts ...BotOptFunc) {
 func (b *Bot) PressEscape(sel string, opts ...BotOptFunc) (err error) {
 	if elem := b.GetElem(sel, opts...); elem != nil {
 		// elem.MustKeyActions().Press(input.Escape).MustDo()
-		elem.Timeout(time.Second * b.ShortTo).MustKeyActions().Press(input.Escape).MustDo()
+		elem.Timeout(b.shortToSec).MustKeyActions().Press(input.Escape).MustDo()
 		return nil
 	}
 	return
@@ -248,7 +248,7 @@ func (b *Bot) ensureHighlight(elem *rod.Element) {
 // EnsureAnyElem return the match elem
 func (b *Bot) EnsureAnyElem(selectors ...string) (sel string, err error) {
 	err = rod.Try(func() {
-		r := b.Pg.Timeout(time.Second * b.MediumTo).Race()
+		r := b.Pg.Timeout(b.mediumToSec).Race()
 		for _, s := range selectors {
 			b.appendToRace(s, &sel, r)
 		}
@@ -291,12 +291,12 @@ func (b *Bot) MustEnsureUrlHas(s string, opts ...BotOptFunc) {
 }
 
 func (b *Bot) EnsureUrlHas(s string, opts ...BotOptFunc) (err error) {
-	opt := BotOpts{Timeout: b.MediumTo}
+	opt := BotOpts{Timeout: MediumToSec}
 	BindBotOpts(&opt, opts...)
 
 	script := fmt.Sprintf(`() => decodeURIComponent(window.location.href).includes("%s")`, s)
 	err = rod.Try(func() {
-		b.Pg.Timeout(time.Second * opt.Timeout).MustWait(script).CancelTimeout()
+		b.Pg.Timeout(time.Second * time.Duration(opt.Timeout)).MustWait(script).CancelTimeout()
 	})
 
 	if err != nil {
@@ -312,7 +312,7 @@ func (b *Bot) EnsureUrlHas(s string, opts ...BotOptFunc) (err error) {
 //
 // if you want to get error, please use rod.Page.Eval instead
 func (b *Bot) MustEval(script string) (res string) {
-	res = b.Pg.Timeout(time.Second * b.MediumTo).MustEval(script).String()
+	res = b.Pg.Timeout(b.mediumToSec).MustEval(script).String()
 	return res
 }
 
@@ -474,7 +474,7 @@ func (b *Bot) GetElemUntilInteractable(selector string, opts ...BotOptFunc) (ele
 		xutil.RandSleep(0.5, 1)
 
 		cost := xutil.ElapsedSeconds(ts, 2)
-		if cost > MediumTo {
+		if cost > MediumToSec {
 			return nil
 		}
 	}
@@ -497,15 +497,15 @@ func (b *Bot) GetElemUntilInteractable(selector string, opts ...BotOptFunc) (ele
 //     - will skip the index passed in
 func (b *Bot) GetElem(selector string, opts ...BotOptFunc) (elem *rod.Element) {
 	if selector == "" {
-		log.Warn().Msg("selector is empty")
-		xpretty.DummyErrorLog("selector is empty")
+		w, i := xpretty.Caller(2)
+		log.Warn().Str("file", w).Int("line", i).Msg("selector is empty")
 		return
 	}
 	b.selector = selector
 
 	byText := strings.Contains(selector, SEP)
 
-	opt := BotOpts{ElemIndex: xutil.MaxInt, Timeout: b.MediumTo}
+	opt := BotOpts{ElemIndex: xutil.MaxInt, Timeout: MediumToSec, root: b.root}
 	BindBotOpts(&opt, opts...)
 
 	if !byText && int(opt.Timeout) == 0 {
@@ -516,6 +516,7 @@ func (b *Bot) GetElem(selector string, opts ...BotOptFunc) (elem *rod.Element) {
 	// xutil.DumbLog(fmt.Sprintf("wait for (%s) to appear", selector))
 	// wait elem of selector to appear
 
+	dur := time.Duration(opt.Timeout) * time.Second
 	var err error
 	if funk.Contains(selector, SEP) {
 		ss := strutil.Split(selector, SEP)
@@ -528,9 +529,17 @@ func (b *Bot) GetElem(selector string, opts ...BotOptFunc) (elem *rod.Element) {
 			}
 			txt = fmt.Sprintf(m, txt)
 		}
-		elem, err = b.Pg.Timeout(time.Second*opt.Timeout).ElementR(ss[0], txt)
+		if opt.root != nil {
+			elem, err = opt.root.Timeout(dur).ElementR(ss[0], txt)
+		} else {
+			elem, err = b.Pg.Timeout(dur).ElementR(ss[0], txt)
+		}
 	} else {
-		elem, err = b.Pg.Timeout(time.Second * opt.Timeout).Element(selector)
+		if opt.root != nil {
+			elem, err = opt.root.Timeout(dur).Element(selector)
+		} else {
+			elem, err = b.Pg.Timeout(dur).Element(selector)
+		}
 	}
 
 	if err != nil {
@@ -560,7 +569,7 @@ func (b *Bot) GetElem(selector string, opts ...BotOptFunc) (elem *rod.Element) {
 //
 // works with Panic, not error
 func (b *Bot) GetElemWithRetry(selector string, retryTimes int, opts ...BotOptFunc) (elem *rod.Element, err error) {
-	opt := BotOpts{Timeout: b.NapTo}
+	opt := BotOpts{Timeout: NapToSec}
 	BindBotOpts(&opt, opts...)
 
 	i, err := b.RetryWhenPanic(func() {
@@ -660,12 +669,12 @@ func (b *Bot) GetElementProp(selector string, opts ...BotOptFunc) (string, error
 }
 
 func (b *Bot) GetWindowInnerHeight() float64 {
-	h := b.Pg.Timeout(time.Second * b.ShortTo).MustEval(`() => window.innerHeight`).Int()
+	h := b.Pg.Timeout(b.shortToSec).MustEval(`() => window.innerHeight`).Int()
 	return float64(h)
 }
 
 func (b *Bot) GetScrollHeight() float64 {
-	h := b.Pg.Timeout(time.Second * b.ShortTo).MustEval(`() => document.body.scrollHeight`).Int()
+	h := b.Pg.Timeout(b.shortToSec).MustEval(`() => document.body.scrollHeight`).Int()
 	return float64(h)
 }
 
@@ -693,11 +702,11 @@ func (b *Bot) ScrollAndClick(selector interface{}, opts ...BotOptFunc) error {
 
 func (b *Bot) ClickAndSwitchToNewPage(selector interface{}, opts ...BotOptFunc) (*rod.Page, error) {
 	opt := BotOpts{
-		Timeout: b.MediumTo,
+		Timeout: MediumToSec,
 	}
 	BindBotOpts(&opt, opts...)
 
-	wait := b.Pg.Timeout(time.Second * opt.Timeout).WaitOpen()
+	wait := b.Pg.Timeout(time.Second * time.Duration(opt.Timeout)).WaitOpen()
 	if err := b.ScrollAndClick(selector, opts...); err != nil {
 		return nil, err
 	}
@@ -796,7 +805,7 @@ func (b *Bot) ClickElem(elem *rod.Element, highlight ...bool) error {
 	if len(highlight) == 0 {
 		b.ensureHighlight(elem)
 	}
-	e := elem.Timeout(time.Second*b.ShortTo).Click(proto.InputMouseButtonLeft, clickButtonTimes)
+	e := elem.Timeout(b.shortToSec).Click(proto.InputMouseButtonLeft, clickButtonTimes)
 	if e != nil {
 		log.Warn().Interface("selector", b.selector).Err(e).Msg("Err: close by left click")
 	}
@@ -816,12 +825,12 @@ func (b *Bot) ClickWithScript(elem *rod.Element, args ...int) error {
 	if v == 0 {
 		b.ensureHighlight(elem)
 	}
-	to := b.ShortTo
+	to := b.shortToSec
 	if len(args) >= 2 {
-		to = time.Duration(args[1])
+		to = time.Duration(args[1]) * time.Second
 	}
 
-	_, e := elem.Timeout(time.Second*to).Eval(` (elem) => { this.click() }`, elem)
+	_, e := elem.Timeout(to).Eval(` (elem) => { this.click() }`, elem)
 	if e != nil {
 		log.Error().Err(e).Msg("Err: close by this.click()")
 		return e
@@ -838,10 +847,29 @@ func (b *Bot) ClickWithScript(elem *rod.Element, args ...int) error {
 //
 // similar with elem.Overlay
 func (b *Bot) Highlight(elem *rod.Element) {
-	go b._highlight(elem)
+	show, hide := 0.333, 0.2
+	style := `box-shadow: rgb(255, 156, 85) 0px 0px 0px 8px, rgb(255, 85, 85) 0px 0px 0px 10px; transition: all 0.5s ease-in-out; animation-delay: 0.1s;`
+
+	go b._highlight(elem, show, hide, style, 0)
 }
 
-func (b *Bot) _highlight(elem *rod.Element) (cost float64) {
+// HighlightBlink
+//
+//   - style: default is "box-shadow: 0px 0px 5px 5px rgba(128, 0, 0, 1);"
+//   - count: blink how many times
+func (b *Bot) HighlightBlink(elem *rod.Element, count int, style string) {
+	show, hide := 0.25, 0.15
+	// style := `box-shadow: rgb(255, 156, 85) 0px 0px 0px 8px, rgb(255, 85, 85) 0px 0px 0px 10px; transition: all 0.15s ease-in-out; animation-delay: 0.1s;`
+	// style = `box-shadow: 0px 0px 10px 8px #c8c8c8, 0px 0px 12px 10px #a0a0a0; transition: all 0.15s ease-in-out; animation-delay: 0.1s;`
+	const styleLayout = "%s transition: all 0.15s ease-in-out; animation-delay: 0.1s;"
+	style_ := `box-shadow: 0px 0px 5px 5px rgba(128, 0, 0, 1);`
+	if style == "" {
+		style = style_
+	}
+	b._highlight(elem, show, hide, fmt.Sprintf(styleLayout, style), count)
+}
+
+func (b *Bot) _highlight(elem *rod.Element, show, hide float64, style string, count int) (cost float64) {
 	ts := time.Now()
 	if !b.Config.Highlight {
 		return
@@ -857,11 +885,14 @@ func (b *Bot) _highlight(elem *rod.Element) (cost float64) {
 	}
 	origStyle := ob.Value.String()
 	// origStyle := elem.MustEval(`e => {return this.getAttribute("style")}`).String()
-	style := `box-shadow: rgb(255, 156, 85) 0px 0px 0px 8px, rgb(255, 85, 85) 0px 0px 0px 10px; transition: all 0.5s ease-in-out; animation-delay: 0.1s;`
-	show, hide := 0.333, 0.2
+	// style := `box-shadow: rgb(255, 156, 85) 0px 0px 0px 8px, rgb(255, 85, 85) 0px 0px 0px 10px; transition: all 0.5s ease-in-out; animation-delay: 0.1s;`
+	// show, hide := 0.333, 0.2
 	v := 0.05
-	ht := xutil.AorB(b.Config.HighlightTimes, 3)
-	for i := 0; i < ht; i++ {
+	if count == 0 {
+		count = xutil.AorB(b.Config.HighlightTimes, 3)
+	}
+
+	for i := 0; i < count; i++ {
 		script := fmt.Sprintf(`() => this.setAttribute("style", "%s");`, style)
 		_, _ = elem.Eval(script)
 		xutil.RandSleep(show-v, show+v)
@@ -893,9 +924,19 @@ func (b *Bot) ScrollToElem(elem *rod.Element, opts ...BotOptFunc) {
 	// take how many steps to scroll elem to position
 	steps := xutil.AorB(b.Config.Steps, 32)
 	steps = int((scrollDistance / dist) * float64(steps))
+
 	log.Trace().Float64("distance", scrollDistance).Int("steps", steps).Msg("Will scroll with")
 	e := b.Pg.Mouse.Scroll(0.0, scrollDistance, steps)
 	b.PanicIfErr(e)
+}
+
+func (b *Bot) ScrollToElemDirectly(elem *rod.Element) error {
+	box, err := b.GetElemBox(elem)
+	if err != nil {
+		return err
+	}
+
+	return b.Pg.Mouse.Scroll(0.0, box.Top, 1)
 }
 
 func (b *Bot) MustScrollToXY(x, y float64) {
@@ -930,7 +971,7 @@ func (b *Bot) GetElemBox(elem interface{}) (box Box, err error) {
 	elem = b.RecalculateElem(elem)
 	rect := "() => JSON.stringify(this.getBoundingClientRect())"
 	err = rod.Try(func() {
-		dat := elem.(*rod.Element).Timeout(time.Second * b.ShortTo).MustEval(rect).String()
+		dat := elem.(*rod.Element).Timeout(b.shortToSec).MustEval(rect).String()
 		log.Trace().Msg(dat)
 		e := json.Unmarshal([]byte(dat), &box)
 		if e != nil {
@@ -1051,4 +1092,12 @@ func (b *Bot) ResetToOriginalPage() {
 
 func (b *Bot) BindIframe(frame *rod.Page) {
 	b.Iframe = frame
+}
+
+func (b *Bot) ResetRoot() {
+	b.root = nil
+}
+
+func (b *Bot) BindRoot(root *rod.Element) {
+	b.root = root
 }

@@ -8,6 +8,8 @@ import (
 	"github.com/coghost/xutil"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
+	"github.com/go-rod/rod/lib/proto"
+	"github.com/go-rod/stealth"
 	"github.com/rs/zerolog/log"
 )
 
@@ -20,13 +22,7 @@ func newDefaultLanucher(cfg *BotConfig, opt BotOpts) string {
 
 	// only default launcher require this
 	l = setLauncher(l, &opt)
-
-	if opt.proxyLine != "" {
-		dir := expandPath(cfg.ProxyRoot)
-		extensionFolder, _, _ := xutil.NewChromeExtension(opt.proxyLine, dir)
-		l.Set("load-extension", extensionFolder)
-		log.Info().Str("extension_folder", extensionFolder).Msg("load proxy extension")
-	}
+	loadProxy(l, cfg, opt)
 
 	u, err := l.Launch()
 	if err != nil {
@@ -35,18 +31,34 @@ func newDefaultLanucher(cfg *BotConfig, opt BotOpts) string {
 	return u
 }
 
+func loadProxyExtension(l *launcher.Launcher, cfg *BotConfig, opt BotOpts) {
+	if cfg.ProxyLine != "" {
+		dir := expandPath(cfg.ProxyRoot)
+		extensionFolder, _, _ := xutil.NewChromeExtension(cfg.ProxyLine, dir)
+		l.Set("load-extension", extensionFolder)
+		log.Info().Str("extension_folder", extensionFolder).Msg("load proxy extension")
+	}
+}
+
+func loadProxy(l *launcher.Launcher, cfg *BotConfig, opt BotOpts) {
+	if v := cfg.ProxyServer; v != "" {
+		l.Proxy(v)
+		log.Info().Str("server", v).Msg("load proxy server")
+	} else {
+		loadProxyExtension(l, cfg, opt)
+	}
+}
+
 func newUserModeLauncher(cfg *BotConfig, opt BotOpts) string {
 	l := launcher.NewUserMode()
 
-	// WARN: @Apr.13 proxy extention is not worked
-	if opt.proxyLine != "" {
-		dir := expandPath(cfg.ProxyRoot)
-		extensionFolder, _, _ := xutil.NewChromeExtension(opt.proxyLine, dir)
-		l.Set("load-extension", extensionFolder)
-		log.Debug().Str("extension_folder", extensionFolder).Msg("load proxy extension")
+	loadProxy(l, cfg, opt)
+
+	if b := cfg.Leakless; b {
+		l.Leakless(b)
 	}
 
-	u, err := l.Launch()
+	u, err := l.UserDataDir(cfg.UserDataDir).Launch()
 	if err != nil {
 		s := fmt.Sprintf("%s", err)
 		if strings.Contains(s, "[launcher] Failed to get the debug url: Opening in existing browser session") {
@@ -85,7 +97,19 @@ func customizeBrowser(u string, cfg *BotConfig, opt BotOpts) *rod.Browser {
 }
 
 func customizePage(brw *rod.Browser, cfg *BotConfig, opt BotOpts) *rod.Page {
-	page := brw.MustPage("")
+	var page *rod.Page
+	if cfg.WithStealth {
+		log.Warn().Msg("running with stealth.js")
+		page = stealth.MustPage(brw)
+		go brw.EachEvent(func(e *proto.TargetTargetCreated) {
+			if e.TargetInfo.Type != proto.TargetTargetInfoTypePage {
+				return
+			}
+			brw.MustPageFromTargetID(e.TargetInfo.TargetID).MustEvalOnNewDocument(stealth.JS)
+		})()
+	} else {
+		page = brw.MustPage("")
+	}
 
 	if opt.BotCfg.UserAgent != "" {
 		ua := bindUA(opt.BotCfg.UserAgent)

@@ -139,7 +139,7 @@ func (s *BotOptsSuite) TestElemOffsetToTop() {
 
 func (s *BotOptsSuite) TestBotTimeout() {
 	type args struct {
-		i time.Duration
+		i int
 	}
 	tests := []struct {
 		name string

@@ -20,10 +20,10 @@ type Box struct {
 type Bot struct {
 	panicBy BotPanicType
 
-	LongTo   time.Duration
-	MediumTo time.Duration
-	ShortTo  time.Duration
-	NapTo    time.Duration
+	longToSec   time.Duration
+	mediumToSec time.Duration
+	shortToSec  time.Duration
+	NapToSec    time.Duration
 
 	popovers []string
 
@@ -35,6 +35,8 @@ type Bot struct {
 
 	// selector
 	selector interface{}
+
+	root *rod.Element
 
 	Config *BotConfig
 
@@ -68,6 +70,9 @@ type BotConfig struct {
 	ProxyRoot string `ini:"proxy_root"`
 	ProxyLine string `ini:"proxy_line"`
 
+	ProxyServer string `ini:"proxy_server"`
+	Leakless    bool   `ini:"leakless"`
+
 	PageTimeout int `ini:"page_timeout"`
 
 	// .rod->show
@@ -96,6 +101,10 @@ type BotConfig struct {
 	//  - ws://ip:port this will launch remote browser
 	//  - ip:port this only connect to remote browser
 	remoteServiceUrl string `ini:"remote_service_url"`
+
+	WithStealth bool `ini:"with_stealth"`
+
+	ClearCookies bool `ini:"clear_cookies"`
 }
 
 type ScrollAsHuman struct {

@@ -11,16 +11,25 @@ const (
 const clickButtonTimes = 1
 
 const (
-	LongTo   = 60
-	MediumTo = 20
-	ShortTo  = 5
-	NapTo    = 2
-	ZeroTo   = 0
-
-	NearlyNonTo = 0.1
+	// ZeroToSec no timeout in second
+	ZeroToSec = 0
+	// NapToSec a nap timeout in second
+	NapToSec = 2
+	// ShortToSec short timeout in second
+	ShortToSec = 5
+	// MediumToSec medium timeout in second
+	MediumToSec = 20
+	// LongToSec long timeout in second
+	LongToSec = 60
+	// NearlyNonToSec a very short timeout in second
+	NearlyNonToSec = 0.1
 )
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"
+
+const (
+	BrowserChrome = "Google Chrome"
+)
 
 type BotPanicType int
 
@@ -32,8 +41,10 @@ const (
 	PanicByLogPanic
 )
 
-var ErrorSelNotFound = errors.New("selector not found")
-var defaultCfg = NewDefaultBotCfg()
+var (
+	ErrorSelNotFound = errors.New("selector not found")
+	defaultCfg       = NewDefaultBotCfg()
+)
 
 func NewDefaultBotCfg() *BotConfig {
 	return &BotConfig{
