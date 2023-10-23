@@ -238,10 +238,12 @@ func (b *Bot) PressTab(sel string, opts ...BotOptFunc) (err error) {
 }
 
 func (b *Bot) ensureHighlight(elem *rod.Element) {
-	b.ScrollToElem(elem)
+	b.ScrollToElem(elem, BotSteps(1), WithBotConfig(defaultCfg))
+
 	if !elem.MustInteractable() {
 		b.CloseIfHasPopovers()
 	}
+
 	b.Highlight(elem)
 }
 
@@ -691,9 +693,7 @@ func (b *Bot) ScrollAndClick(selector interface{}, opts ...BotOptFunc) error {
 	if funk.IsEmpty(selector) {
 		return fmt.Errorf("empty selector(%v) found", selector)
 	}
-	opt := BotOpts{ElemIndex: 0}
-	BindBotOpts(&opt, opts...)
-	elem := b.RecalculateElem(selector, ElemIndex(opt.ElemIndex))
+	elem := b.RecalculateElem(selector, opts...)
 	if elem == nil {
 		return ErrorSelNotFound
 	}
@@ -910,6 +910,9 @@ func (b *Bot) _highlight(elem *rod.Element, show, hide float64, style string, co
 // though rod's built with support of scroll to elem before click/input
 // we want to control the scroll manually, to behavior more like human
 func (b *Bot) ScrollToElem(elem *rod.Element, opts ...BotOptFunc) {
+	if b.Config == nil {
+		b.Config = defaultCfg
+	}
 	oft := xutil.IfaceAorB(b.Config.OffsetToTop, 0.25).(float64)
 	opt := BotOpts{OffsetToTop: oft}
 	BindBotOpts(&opt, opts...)
@@ -986,9 +989,7 @@ func (b *Bot) GetElemBox(elem interface{}) (box Box, err error) {
 func (b *Bot) RecalculateElem(elem interface{}, opts ...BotOptFunc) (newElem *rod.Element) {
 	switch elem := elem.(type) {
 	case string:
-		opt := BotOpts{ElemIndex: 0}
-		BindBotOpts(&opt, opts...)
-		newElem = b.GetElem(elem, ElemIndex(opt.ElemIndex))
+		newElem = b.GetElem(elem, opts...)
 	case *rod.Element:
 		newElem = elem
 	}
@@ -1100,4 +1101,39 @@ func (b *Bot) ResetRoot() {
 
 func (b *Bot) BindRoot(root *rod.Element) {
 	b.root = root
+}
+
+func (b *Bot) SetPageWithCookies(page *rod.Page, raw string) error {
+	var cookies []proto.NetworkCookie
+
+	err := json.Unmarshal([]byte(raw), &cookies)
+	if err != nil {
+		return err
+	}
+
+	var nodes []*proto.NetworkCookieParam
+	for _, cookie := range cookies {
+		nodes = append(nodes, &proto.NetworkCookieParam{
+			Name:         cookie.Name,
+			Value:        cookie.Value,
+			Domain:       cookie.Domain,
+			Path:         cookie.Path,
+			Secure:       cookie.Secure,
+			HTTPOnly:     cookie.HTTPOnly,
+			SameSite:     cookie.SameSite,
+			Expires:      cookie.Expires,
+			Priority:     cookie.Priority,
+			SameParty:    cookie.SameParty,
+			SourceScheme: cookie.SourceScheme,
+			SourcePort:   &cookie.SourcePort,
+		})
+	}
+
+	return page.SetCookies(nodes)
+}
+
+func (b *Bot) Close() {
+	if b != nil && b.Brw != nil {
+		b.Brw.Close()
+	}
 }

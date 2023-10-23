@@ -13,7 +13,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func newDefaultLanucher(cfg *BotConfig, opt BotOpts) string {
+func NewDefaultLanucher(opts ...BotOptFunc) string {
+	opt := BotOpts{
+		BotCfg: defaultCfg,
+	}
+	BindBotOpts(&opt, opts...)
+	cfg := opt.BotCfg
+
 	var l *launcher.Launcher
 	l = launcher.New()
 	if cfg.BinFile != "" {
@@ -79,8 +85,14 @@ func newRemoteLauncher(opt BotOpts) *launcher.Launcher {
 	return l
 }
 
-func customizeBrowser(u string, cfg *BotConfig, opt BotOpts) *rod.Browser {
-	browser := rod.New().ControlURL(u).MustConnect()
+func CustomizeBrowser(URL string, opts ...BotOptFunc) *rod.Browser {
+	opt := BotOpts{
+		BotCfg: defaultCfg,
+	}
+	BindBotOpts(&opt, opts...)
+	cfg := opt.BotCfg
+
+	browser := rod.New().ControlURL(URL).MustConnect()
 
 	if cfg.NoDefaultDevice {
 		browser = browser.NoDefaultDevice()
@@ -96,11 +108,18 @@ func customizeBrowser(u string, cfg *BotConfig, opt BotOpts) *rod.Browser {
 	return browser
 }
 
-func customizePage(brw *rod.Browser, cfg *BotConfig, opt BotOpts) *rod.Page {
+func CustomizePage(brw *rod.Browser, opts ...BotOptFunc) *rod.Page {
+	opt := BotOpts{
+		BotCfg: defaultCfg,
+	}
+	BindBotOpts(&opt, opts...)
+	cfg := opt.BotCfg
+
 	var page *rod.Page
 	if cfg.WithStealth {
 		log.Warn().Msg("running with stealth.js")
 		page = stealth.MustPage(brw)
+
 		go brw.EachEvent(func(e *proto.TargetTargetCreated) {
 			if e.TargetInfo.Type != proto.TargetTargetInfoTypePage {
 				return
@@ -108,12 +127,22 @@ func customizePage(brw *rod.Browser, cfg *BotConfig, opt BotOpts) *rod.Page {
 			brw.MustPageFromTargetID(e.TargetInfo.TargetID).MustEvalOnNewDocument(stealth.JS)
 		})()
 	} else {
-		page = brw.MustPage("")
+		if opt.incognito {
+			page = brw.MustIncognito().MustPage()
+		} else {
+			page = brw.MustPage()
+		}
 	}
 
 	if opt.BotCfg.UserAgent != "" {
 		ua := bindUA(opt.BotCfg.UserAgent)
 		page = page.MustSetUserAgent(ua)
+	}
+
+	if opt.incognito {
+		w, h := cfg.Width, cfg.Height
+		page = page.MustSetWindow(cfg.Left, cfg.Top, w, h)
+		return page
 	}
 
 	if cfg.Maximize {
@@ -124,7 +153,7 @@ func customizePage(brw *rod.Browser, cfg *BotConfig, opt BotOpts) *rod.Page {
 	w, h := cfg.Width, cfg.Height
 	vw := xutil.AorB(cfg.ViewOffsetWidth, 0)
 	vh := xutil.AorB(cfg.ViewOffsetHeight, 0)
-	page = page.MustSetWindow(opt.BotCfg.Screen, 0, w, h)
+	page = page.MustSetWindow(cfg.Screen, 0, w, h)
 	if vw != 0 || vh != 0 {
 		page = page.MustSetViewport(w-vw, h-vh, 0.0, false)
 	}

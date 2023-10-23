@@ -34,6 +34,8 @@ type BotOpts struct {
 	retry int
 
 	root *rod.Element
+
+	incognito bool
 }
 
 type BotOptFunc func(o *BotOpts)
@@ -104,8 +106,18 @@ func BotScreen(i int) BotOptFunc {
 	}
 }
 
+func BotScreenPosition(left, top int) BotOptFunc {
+	return func(o *BotOpts) {
+		o.BotCfg.Left = left
+		o.BotCfg.Top = top
+	}
+}
+
 func BotSteps(i int) BotOptFunc {
 	return func(o *BotOpts) {
+		if o.BotCfg == nil {
+			o.BotCfg = defaultCfg
+		}
 		o.BotCfg.Steps = i
 	}
 }
@@ -211,5 +223,11 @@ func DisableCookies(b bool) BotOptFunc {
 func WithRoot(root *rod.Element) BotOptFunc {
 	return func(o *BotOpts) {
 		o.root = root
+	}
+}
+
+func Incognito(b bool) BotOptFunc {
+	return func(o *BotOpts) {
+		o.incognito = b
 	}
 }
