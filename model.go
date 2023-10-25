@@ -27,6 +27,8 @@ type Bot struct {
 
 	popovers []string
 
+	LaunchURL string
+
 	Brw *rod.Browser
 	Pg  *rod.Page
 
@@ -41,6 +43,8 @@ type Bot struct {
 	Config *BotConfig
 
 	ScrollAsHuman *ScrollAsHuman
+
+	UniqueID string
 }
 
 // BotConfig is used to config bot options, which is usually read from config file
@@ -60,6 +64,8 @@ type BotConfig struct {
 	// height, width
 	Width  int `ini:"width"`
 	Height int `ini:"height"`
+	Left   int `ini:"left"`
+	Top    int `ini:"right"`
 
 	ViewOffsetWidth  int `ini:"view_offset_width"`
 	ViewOffsetHeight int `ini:"view_offset_height"`

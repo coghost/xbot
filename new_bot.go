@@ -8,6 +8,7 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/gookit/goutil/strutil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -27,10 +28,29 @@ and you can visit https://www.whatismyip.com/user-agent/ to check your user-agen
 	bot = new(Bot)
 	bot.Config = opt.BotCfg
 	if opt.spawn {
-		bot.Brw, bot.Pg = createBrwAndPage(opts...)
+		bot.LaunchURL, bot.Brw, bot.Pg = createBrwAndPage(opts...)
 	}
 	bot.SetTimeout()
+	bot.UniqueID = strutil.RandomCharsV3(8)
 
+	return bot
+}
+
+func NewBotWithPage(page *rod.Page, opts ...BotOptFunc) *Bot {
+	opt := BotOpts{
+		spawn:   true,
+		panicBy: PanicByLogFatal,
+		BotCfg:  defaultCfg,
+	}
+	BindBotOpts(&opt, opts...)
+
+	bot := &Bot{
+		Pg:     page,
+		Config: opt.BotCfg,
+	}
+
+	bot.SetTimeout()
+	bot.UniqueID = strutil.RandomCharsV3(8)
 	return bot
 }
 
@@ -52,11 +72,28 @@ func NewUserModeBot(opts ...BotOptFunc) (bot *Bot) {
 
 func Spawn(bot *Bot, opts ...BotOptFunc) {
 	if bot.Brw == nil {
-		bot.Brw, bot.Pg = createBrwAndPage(opts...)
+		bot.LaunchURL, bot.Brw, bot.Pg = createBrwAndPage(opts...)
 	}
 }
 
-func createBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
+func SpawnBrowserOnly(bot *Bot, opts ...BotOptFunc) {
+	if bot.Brw != nil {
+		return
+	}
+
+	opt := BotOpts{
+		BotCfg: defaultCfg,
+	}
+	BindBotOpts(&opt, opts...)
+
+	u := NewDefaultLanucher(opts...)
+	brw := CustomizeBrowser(u, opts...)
+
+	bot.LaunchURL = u
+	bot.Brw = brw
+}
+
+func createBrwAndPage(opts ...BotOptFunc) (URL string, brw *rod.Browser, page *rod.Page) {
 	opt := BotOpts{BotCfg: defaultCfg}
 	BindBotOpts(&opt, opts...)
 
@@ -71,25 +108,24 @@ func createBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
 }
 
 // NewBrwAndPage create and return a Browser and a blank page with window size 1366*768
-func NewBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
+func NewBrwAndPage(opts ...BotOptFunc) (URL string, brw *rod.Browser, page *rod.Page) {
 	opt := BotOpts{
 		BotCfg: defaultCfg,
 	}
 	BindBotOpts(&opt, opts...)
-	cfg := opt.BotCfg
 
-	u := newDefaultLanucher(cfg, opt)
-	brw = customizeBrowser(u, cfg, opt)
-	page = customizePage(brw, cfg, opt)
+	u := NewDefaultLanucher(opts...)
+	brw = CustomizeBrowser(u, opts...)
+	page = CustomizePage(brw, opts...)
 
-	return brw, page
+	return u, brw, page
 }
 
 // NewUserModeBrwAndPage run with user mode, will use system browser.
 //
 // we can integrate this with NewBrwAndPage, but there are too many if-else,
 // so we just make a copy of NewBrwAndPage, and extract UserMode related logics
-func NewUserModeBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
+func NewUserModeBrwAndPage(opts ...BotOptFunc) (URL string, brw *rod.Browser, page *rod.Page) {
 	opt := BotOpts{
 		BotCfg: defaultCfg,
 	}
@@ -97,17 +133,17 @@ func NewUserModeBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page
 	cfg := opt.BotCfg
 
 	u := newUserModeLauncher(cfg, opt)
-	brw = customizeBrowser(u, cfg, opt)
+	brw = CustomizeBrowser(u, opts...)
 	if cfg.ClearCookies {
 		log.Info().Msg("clear cookies in user-mode")
 		brw.MustSetCookies()
 	}
-	page = customizePage(brw, cfg, opt)
+	page = CustomizePage(brw, opts...)
 
-	return brw, page
+	return u, brw, page
 }
 
-func NewRemoteBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) {
+func NewRemoteBrwAndPage(opts ...BotOptFunc) (URL string, brw *rod.Browser, page *rod.Page) {
 	opt := BotOpts{
 		BotCfg: defaultCfg,
 	}
@@ -121,9 +157,9 @@ func NewRemoteBrwAndPage(opts ...BotOptFunc) (brw *rod.Browser, page *rod.Page) 
 		u := launcher.MustResolveURL(cfg.remoteServiceUrl)
 		brw = rod.New().ControlURL(u).MustConnect()
 	}
-	page = customizePage(brw, cfg, opt)
+	page = CustomizePage(brw, opts...)
 
-	return brw, page
+	return "", brw, page
 }
 
 func setLauncher(l *launcher.Launcher, opt *BotOpts) *launcher.Launcher {
