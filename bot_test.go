@@ -170,7 +170,6 @@ func (s *botSuite) Test_01_DisableImages_Enabled() {
 			s.Greater(v, 100, tt.name)
 		})
 	}
-
 }
 
 func (s *botSuite) Test_01_DisableImages_Disabled() {
@@ -269,7 +268,7 @@ func (s *botSuite) Test_03_CatchOrFb() {
 		{
 			name:    "failed",
 			fn:      fn1,
-			wantErr: &rod.ErrTry{Value: context.DeadlineExceeded},
+			wantErr: &rod.TryError{Value: context.DeadlineExceeded},
 		},
 		{
 			name:    "found",
@@ -487,7 +486,6 @@ func (s *botSuite) Test_05_ClickPopoverByEsc() {
 			}
 		})
 	}
-
 }
 
 func (s *botSuite) Test_06_PressEscape() {
@@ -525,7 +523,7 @@ func (s *botSuite) Test_06_PressEscape() {
 }
 
 func (s *botSuite) Test_06_PressTab() {
-	var tests = []botTest{
+	tests := []botTest{
 		{
 			// don't run this too fast, or angel will trigger recaptcha
 			name: "input ohio without press tab",
@@ -600,7 +598,7 @@ func (s *botSuite) Test_07_EnsureAnyElem() {
 			},
 			sels:    []string{baidu.nonExistSel, blocket.searchTerm},
 			wantStr: "",
-			wantErr: &rod.ErrTry{Value: context.DeadlineExceeded},
+			wantErr: &rod.TryError{Value: context.DeadlineExceeded},
 		},
 	}
 
@@ -648,7 +646,7 @@ func (s *botSuite) Test_08_EnsureUrlHas() {
 				urlHas: "this_should_not_be_found",
 				submit: baidu.submit,
 			},
-			wantErr: &rod.ErrTry{Value: context.DeadlineExceeded},
+			wantErr: &rod.TryError{Value: context.DeadlineExceeded},
 		},
 	}
 
@@ -666,7 +664,6 @@ func (s *botSuite) Test_08_EnsureUrlHas() {
 			}
 		})
 	}
-
 }
 
 func (s *botSuite) Test_09_MustEval() {
@@ -716,7 +713,7 @@ func (s *botSuite) Test_10_FillBar() {
 		},
 	}
 
-	var handle = func(b *xbot.Bot, tt botTest) {
+	handle := func(b *xbot.Bot, tt botTest) {
 		ts := time.Now()
 		got, err := b.FillBar(tt.args.searchTerm, tt.wantStr, xbot.InputSubmit(tt.withSubmit))
 		elp := xutil.ElapsedSeconds(ts, 2)
@@ -803,7 +800,7 @@ var getElemData = []botTest{
 }
 
 func (s *botSuite) Test_1101_GetElemsAndNoDelay() {
-	var handle = func(b *xbot.Bot, tt botTest) {
+	handle := func(b *xbot.Bot, tt botTest) {
 		ts := time.Now()
 		got := b.GetElems(tt.args.sel)
 		cost := xutil.ElapsedSeconds(ts, 2)
@@ -816,7 +813,7 @@ func (s *botSuite) Test_1101_GetElemsAndNoDelay() {
 		s.LessOrEqual(cost, 1.0, tt.name)
 	}
 
-	var handleNoDelay = func(b *xbot.Bot, tt botTest) {
+	handleNoDelay := func(b *xbot.Bot, tt botTest) {
 		ts := time.Now()
 		got := b.GetElemWithoutDelay(tt.args.sel, tt.index)
 		cost := xutil.ElapsedSeconds(ts, 2)
@@ -841,7 +838,7 @@ func (s *botSuite) Test_1101_GetElemsAndNoDelay() {
 }
 
 func (s *botSuite) Test_1102_GetElem_TestData() {
-	var handle = func(b *xbot.Bot, tt botTest) {
+	handle := func(b *xbot.Bot, tt botTest) {
 		to := tt.to
 		ts := time.Now()
 		got := b.GetElem(tt.args.sel, xbot.ElemIndex(tt.index), xbot.BotTimeout(to))
@@ -875,7 +872,7 @@ var t1 = botTest{
 }
 
 func (s *botSuite) Test_1103_GetElem_RealWorld() {
-	var handle = func(b *xbot.Bot, elem *rod.Element) {
+	handle := func(b *xbot.Bot, elem *rod.Element) {
 		b.MustScrollAndClickElem(elem)
 
 		selected := b.GetElem(blocket.confirmCategory, xbot.BotTimeout(0))
@@ -965,7 +962,7 @@ func (s *botSuite) Test_1201_GetElemAttr() {
 		},
 	}
 
-	var handle = func(b *xbot.Bot, tt tga) {
+	handle := func(b *xbot.Bot, tt tga) {
 		var got string
 		if tt.noAttr {
 			got = b.GetElementAttr(tt.args.sel)
@@ -1028,7 +1025,6 @@ func (s *botSuite) Test_1401_ScrollAndClick_1() {
 		v := b.ScrollAndClickElem(sub, 2)
 		s.NotNil(v, "ScrollAndClickElem: category is covered by popover, should be false")
 	})
-
 }
 
 var closePop = func(s *botSuite, b *xbot.Bot) {
@@ -1046,7 +1042,7 @@ func (s *botSuite) Test_1402_ClickOrWithJs() {
 		s.NotNil(sub)
 		e := b.ClickWithScript(sub)
 		s.NotNil(e)
-		s.ErrorIs(e, &rod.ErrNotInteractable{}, "click covered button")
+		s.ErrorIs(e, &rod.NotInteractableError{}, "click covered button")
 	})
 
 	runWorker(t1, func(b *xbot.Bot, tt botTest) {

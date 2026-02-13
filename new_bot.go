@@ -170,7 +170,7 @@ func setLauncher(l *launcher.Launcher, opt *BotOpts) *launcher.Launcher {
 		Set("disable-gpu").
 		Set("disable-dev-shm-usage").
 		Set("disable-web-security").
-		Delete("use-mock-keychain").
+		// Delete("use-mock-keychain").
 		Set("disable-infobars").
 		Set("enable-automation").
 		Devtools(opt.BotCfg.Devtools).

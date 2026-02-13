@@ -17,7 +17,6 @@ import (
 	"github.com/go-rod/rod/lib/input"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/gookit/goutil/dump"
-	"github.com/gookit/goutil/mathutil"
 	"github.com/gookit/goutil/strutil"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cast"
@@ -237,6 +236,10 @@ func (b *Bot) PressTab(sel string, opts ...BotOptFunc) (err error) {
 	return
 }
 
+func (b *Bot) PressPageDown(elem *rod.Element) error {
+	return elem.Timeout(b.shortToSec).MustKeyActions().Press(input.PageDown).Do()
+}
+
 func (b *Bot) ensureHighlight(elem *rod.Element) {
 	b.ScrollToElem(elem, BotSteps(1), WithBotConfig(defaultCfg))
 
@@ -282,8 +285,8 @@ func (b *Bot) MustEnsureAnyElem(selectors ...string) string {
 	s, err := b.EnsureAnyElem(selectors...)
 	b.PanicIfErr(err)
 
-	cost := mathutil.ElapsedTime(start)
-	log.Trace().Str("selector", s).Str("cost", cost).Msg("Ensure")
+	cost := time.Since(start).Seconds()
+	log.Trace().Str("selector", s).Float64("cost", cost).Msg("Ensure")
 	return s
 }
 
@@ -300,7 +303,6 @@ func (b *Bot) EnsureUrlHas(s string, opts ...BotOptFunc) (err error) {
 	err = rod.Try(func() {
 		b.Pg.Timeout(time.Second * time.Duration(opt.Timeout)).MustWait(script).CancelTimeout()
 	})
-
 	if err != nil {
 		log.Error().Err(err).Msg(xpretty.Yellowf("Fail: %s", script))
 	}
@@ -711,6 +713,10 @@ func (b *Bot) ClickAndSwitchToNewPage(selector interface{}, opts ...BotOptFunc) 
 		return nil, err
 	}
 	pg, err := wait()
+	if err != nil {
+		return nil, err
+	}
+
 	b.UpdatePage(pg)
 	return pg, err
 }
@@ -724,16 +730,22 @@ func (b *Bot) MustClickAndSwitchToNewPage(selector interface{}, opts ...BotOptFu
 }
 
 func (b *Bot) MustClickAndSwitchToNewPageWithScript(selector interface{}, opts ...BotOptFunc) *rod.Page {
+	pg, err := b.ClickAndSwitchToNewPageWithScript(selector, opts...)
+	b.PanicIfErr(err)
+	return pg
+}
+
+func (b *Bot) ClickAndSwitchToNewPageWithScript(selector interface{}, opts ...BotOptFunc) (*rod.Page, error) {
 	wait := b.Pg.WaitOpen()
 	elem := b.GetElem(selector.(string), opts...)
 	_ = b.ClickWithScript(elem)
 	pg, err := wait()
-	b.UpdatePage(pg)
-
 	if err != nil {
-		b.PanicIfErr(err)
+		return nil, err
 	}
-	return pg
+
+	err = b.UpdatePageE(pg)
+	return pg, err
 }
 
 func (b *Bot) MustScrollAndClickElem(elem *rod.Element, retryArgs ...uint) {
@@ -837,7 +849,7 @@ func (b *Bot) ClickWithScript(elem *rod.Element, args ...int) error {
 	}
 
 	_, ei := elem.Interactable()
-	if errors.Is(ei, &rod.ErrObjectNotFound{}) {
+	if errors.Is(ei, &rod.ObjectNotFoundError{}) {
 		return nil
 	}
 	return ei

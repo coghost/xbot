@@ -10,6 +10,7 @@ import (
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/go-rod/stealth"
+	"github.com/gookit/goutil/fsutil"
 	"github.com/rs/zerolog/log"
 )
 
@@ -64,7 +65,8 @@ func newUserModeLauncher(cfg *BotConfig, opt BotOpts) string {
 		l.Leakless(b)
 	}
 
-	u, err := l.UserDataDir(cfg.UserDataDir).Launch()
+	udd := fsutil.ExpandPath(cfg.UserDataDir)
+	u, err := l.UserDataDir(udd).Launch()
 	if err != nil {
 		s := fmt.Sprintf("%s", err)
 		if strings.Contains(s, "[launcher] Failed to get the debug url: Opening in existing browser session") {
