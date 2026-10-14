@@ -6,11 +6,9 @@ import (
 	"time"
 
 	"github.com/coghost/xutil"
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
-	"github.com/go-rod/rod/lib/proto"
-	"github.com/go-rod/stealth"
 	"github.com/gookit/goutil/fsutil"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/launcher"
 	"github.com/rs/zerolog/log"
 )
 
@@ -119,15 +117,15 @@ func CustomizePage(brw *rod.Browser, opts ...BotOptFunc) *rod.Page {
 
 	var page *rod.Page
 	if cfg.WithStealth {
-		log.Warn().Msg("running with stealth.js")
-		page = stealth.MustPage(brw)
+		log.Fatal().Msg("running with stealth.js")
+		// page = stealth.MustPage(brw)
 
-		go brw.EachEvent(func(e *proto.TargetTargetCreated) {
-			if e.TargetInfo.Type != proto.TargetTargetInfoTypePage {
-				return
-			}
-			brw.MustPageFromTargetID(e.TargetInfo.TargetID).MustEvalOnNewDocument(stealth.JS)
-		})()
+		// go brw.EachEvent(func(e *proto.TargetTargetCreated) {
+		// 	if e.TargetInfo.Type != proto.TargetTargetInfoTypePage {
+		// 		return
+		// 	}
+		// 	brw.MustPageFromTargetID(e.TargetInfo.TargetID).MustEvalOnNewDocument(stealth.JS)
+		// })()
 	} else {
 		if opt.incognito {
 			page = brw.MustIncognito().MustPage()

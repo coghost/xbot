@@ -1,6 +1,6 @@
 package xbot
 
-import "github.com/go-rod/rod"
+import rod "github.com/headlesslab/wand"
 
 type BotOpts struct {
 	spawn   bool

@@ -9,7 +9,7 @@ import (
 	"github.com/coghost/xbot"
 	"github.com/coghost/xlog"
 	"github.com/coghost/xutil"
-	"github.com/go-rod/rod"
+	rod "github.com/headlesslab/wand"
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cast"

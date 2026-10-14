@@ -13,11 +13,11 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/coghost/xpretty"
 	"github.com/coghost/xutil"
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/input"
-	"github.com/go-rod/rod/lib/proto"
 	"github.com/gookit/goutil/dump"
 	"github.com/gookit/goutil/strutil"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/input"
+	"github.com/headlesslab/wand/lib/proto"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cast"
 	"github.com/thoas/go-funk"
@@ -1135,7 +1135,6 @@ func (b *Bot) SetPageWithCookies(page *rod.Page, raw string) error {
 			SameSite:     cookie.SameSite,
 			Expires:      cookie.Expires,
 			Priority:     cookie.Priority,
-			SameParty:    cookie.SameParty,
 			SourceScheme: cookie.SourceScheme,
 			SourcePort:   &cookie.SourcePort,
 		})
